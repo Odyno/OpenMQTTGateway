@@ -285,7 +285,7 @@ void pub(char* topicori, char* payload, bool retainFlag) {
 void pub(char* topicori, JsonObject& data) {
   Log.notice(F("Subject: %s" CR), topicori);
   digitalWrite(LED_RECEIVE, LED_RECEIVE_ON);
-  logJson(data);
+  logJson("Sent: ", data);
   if (client.connected()) {
     String topic = String(mqtt_topic) + String(topicori);
 #ifdef valueAsASubject
@@ -453,14 +453,18 @@ void pubMQTT(String topic, unsigned long payload) {
   client.publish((char*)topic.c_str(), val);
 }
 
-void logJson(JsonObject& jsondata) {
+void logJson(String comment, JsonObject& jsondata) {
 #if defined(ESP8266) || defined(ESP32) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
   char JSONmessageBuffer[jsondata.measureLength() + 1];
 #else
   char JSONmessageBuffer[JSON_MSG_BUFFER];
 #endif
   jsondata.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
-  Log.notice(F("Received json : %s" CR), JSONmessageBuffer);
+  Log.notice("%s%s\n", comment.c_str(), JSONmessageBuffer);
+}
+
+void logJson(JsonObject& jsondata) {
+  logJson("Json: ", jsondata);
 }
 
 bool cmpToMainTopic(char* topicOri, char* toAdd) {
@@ -1492,7 +1496,7 @@ void receivingMQTT(char* topicOri, char* datacallback) {
 
   if (jsondata.success()) { // json object ok -> json decoding
     // log the received json
-    logJson(jsondata);
+    logJson("Received: ", jsondata);
 #ifdef ZgatewayPilight // ZgatewayPilight is only defined with json publishing due to its numerous parameters
     MQTTtoPilight(topicOri, jsondata);
 #endif
