@@ -64,10 +64,73 @@ void createDiscoveryFromList(const char* mac, const char* sensorList[][8], int s
 }
 #  endif
 
+
+void createDiscoveryDeviceTrigger( char* in_topic, char* unique_id, bool gateway_entity,
+                     char* device_name, char* device_manufacturer, char* device_model, char* device_mac) {
+  const int JSON_MSG_CALC_BUFFER = JSON_OBJECT_SIZE(14) + JSON_OBJECT_SIZE(5) + JSON_ARRAY_SIZE(1);
+  StaticJsonBuffer<JSON_MSG_CALC_BUFFER> jsonBuffer;
+  JsonObject& sensor = jsonBuffer.createObject();
+
+  sensor.set("automation_type","trigger");
+ 
+  char state_topic[mqtt_topic_max_size];
+  // If not an entity belonging to the gateway we put wild card for the location and gateway name
+  // allowing to have the entity detected by several gateways and a consistent discovery topic among the gateways
+  gateway_entity ? strcpy(state_topic, mqtt_topic) : strcpy(state_topic, "+/+");
+  strcat(state_topic, in_topic);
+  sensor.set("topic", state_topic);
+  sensor.set("type","button_short_press");
+  sensor.set("subtype","turn_on");
+
+  if (gateway_entity) {
+    StaticJsonBuffer<JSON_MSG_BUFFER> jsonDeviceBuffer;
+    JsonObject& device = jsonDeviceBuffer.createObject();
+    char JSONmessageBuffer[JSON_MSG_BUFFER];
+    modules.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
+    Log.notice(F("Received json : %s" CR), JSONmessageBuffer);
+    device.set("name", gateway_name);
+    device.set("model", JSONmessageBuffer);
+    device.set("manufacturer", DEVICEMANUFACTURER);
+    device.set("sw_version", OMG_VERSION);
+    JsonArray& identifiers = device.createNestedArray("identifiers");
+    identifiers.add(getMacAddress());
+    sensor.set("device", device); //device representing the board
+  } else {
+    char deviceid[13];
+    memcpy(deviceid, &unique_id[0], 12);
+    deviceid[12] = '\0';
+    StaticJsonBuffer<JSON_MSG_BUFFER> jsonDeviceBuffer;
+    JsonObject& device = jsonDeviceBuffer.createObject();
+    if (device_mac[0] != 0) {
+      JsonArray& connections = device.createNestedArray("connections");
+      JsonArray& connection_mac = connections.createNestedArray();
+      connection_mac.add("mac");
+      connection_mac.add(device_mac);
+    }
+    JsonArray& identifiers = device.createNestedArray("identifiers");
+    identifiers.add(deviceid);
+    if (device_manufacturer[0]) {
+      device.set("manufacturer", device_manufacturer);
+    }
+    if (device_model[0]) {
+      device.set("model", device_model);
+    }
+    if (device_name[0]) {
+      device.set("name", device_name);
+    }
+    device.set("via_device", gateway_name); //device name of the board
+    sensor.set("device", device); //device representing the actual sensor/switch device
+  }
+  String topic = String(discovery_Topic) + "/device_automation/" + String(unique_id) + "/config";
+  pub_custom_topic((char*)topic.c_str(), sensor, true);
+}
+
+
+
 void createDiscovery(const char* sensor_type,
                      const char* st_topic, const char* s_name, const char* unique_id,
                      const char* availability_topic, const char* device_class, const char* value_template,
-                     const char* payload_on, const char* payload_off, const char* unit_of_meas,
+                     const char* payload_on, const char* payload_off, const char* unit_of_meas,                     
                      int off_delay,
                      const char* payload_available, const char* payload_not_avalaible, bool gateway_entity, const char* cmd_topic,
                      const char* device_name, const char* device_manufacturer, const char* device_model, const char* device_mac, bool retainCmd) {
@@ -552,6 +615,7 @@ void pubMqttDiscovery() {
                   0, "", "", true, "",
                   "", "", "", "", false // device name, device manufacturer, device model, device mac, retain
   );
+  
 #  endif
 
 #  ifdef ZgatewayRF2
