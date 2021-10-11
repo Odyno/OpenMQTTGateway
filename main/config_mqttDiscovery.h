@@ -39,9 +39,8 @@ extern void createDiscovery(const char* sensor_type,
                             const char* payload_available, const char* payload_not_avalaible, bool gateway_entity, const char* command_topic,
                             const char* device_name, const char* device_manufacturer, const char* device_model, const char* device_mac, bool retainCmd);
 
-                            
- extern void createDiscoveryDeviceTrigger( char* in_topic, char* unique_id, bool gateway_entity,
-                     char* device_name, char* device_manufacturer, char* device_model, char* device_mac);
+extern void createDiscoveryDeviceTrigger(char* in_topic, char* unique_id, bool gateway_entity,
+                                         char* device_name, char* device_manufacturer, char* device_model, char* device_mac);
 
 #define discovery_Topic "homeassistant"
 

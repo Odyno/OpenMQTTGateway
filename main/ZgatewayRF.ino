@@ -42,44 +42,43 @@ static const char* bin2tristate(const char* bin) {
   static char returnValue[50];
   int pos = 0;
   int pos2 = 0;
-  while (bin[pos]!='\0' && bin[pos+1]!='\0') {
-    if (bin[pos]=='0' && bin[pos+1]=='0') {
+  while (bin[pos] != '\0' && bin[pos + 1] != '\0') {
+    if (bin[pos] == '0' && bin[pos + 1] == '0') {
       returnValue[pos2] = '0';
-    } else if (bin[pos]=='1' && bin[pos+1]=='1') {
+    } else if (bin[pos] == '1' && bin[pos + 1] == '1') {
       returnValue[pos2] = '1';
-    } else if (bin[pos]=='0' && bin[pos+1]=='1') {
+    } else if (bin[pos] == '0' && bin[pos + 1] == '1') {
       returnValue[pos2] = 'F';
     } else {
       return "-";
     }
-    pos = pos+2;
+    pos = pos + 2;
     pos2++;
   }
   returnValue[pos2] = '\0';
   return returnValue;
 }
 
-static char * dec2binWzerofill(unsigned long Dec, unsigned int bitLength) {
-  static char bin[64]; 
-  unsigned int i=0;
+static char* dec2binWzerofill(unsigned long Dec, unsigned int bitLength) {
+  static char bin[64];
+  unsigned int i = 0;
 
   while (Dec > 0) {
-    bin[32+i++] = ((Dec & 1) > 0) ? '1' : '0';
+    bin[32 + i++] = ((Dec & 1) > 0) ? '1' : '0';
     Dec = Dec >> 1;
   }
 
-  for (unsigned int j = 0; j< bitLength; j++) {
+  for (unsigned int j = 0; j < bitLength; j++) {
     if (j >= bitLength - i) {
-      bin[j] = bin[ 31 + i - (j - (bitLength - i)) ];
+      bin[j] = bin[31 + i - (j - (bitLength - i))];
     } else {
       bin[j] = '0';
     }
   }
   bin[bitLength] = '\0';
-  
+
   return bin;
 }
-
 
 #  if defined(ZmqttDiscovery) && !defined(RF_DISABLE_TRANSMIT)
 void RFtoMQTTdiscovery(SIGNAL_SIZE_UL_ULL MQTTvalue) { //on the fly switch creation from received RF values
@@ -90,28 +89,26 @@ void RFtoMQTTdiscovery(SIGNAL_SIZE_UL_ULL MQTTvalue) { //on the fly switch creat
   //component type,name,availability topic,device class,value template,payload on, payload off, unit of measurement
 
   Log.trace(F("CreateDiscoverySwitch: %s" CR), switchRF[1]);
-  /*createDiscovery(switchRF[0],
+/*createDiscovery(switchRF[0],
                   subjectRFtoMQTT, switchRF[1], (char*)getUniqueId(switchRF[1], switchRF[2]).c_str(),
                   will_Topic, switchRF[3], switchRF[4],
                   switchRF[5], switchRF[6], switchRF[7],
                   0, "", "", true, subjectMQTTtoRF,
                   "", "", "", "", false);*/
-  #ifdef valueAsASubject
-    String discovery_topic = String(subjectRFtoMQTT) + "/" + String(switchRF[0]);
-  #else
-    String discovery_topic = String(subjectRFtoMQTT);
-  #endif
+#    ifdef valueAsASubject
+  String discovery_topic = String(subjectRFtoMQTT) + "/" + String(switchRF[0]);
+#    else
+  String discovery_topic = String(subjectRFtoMQTT);
+#    endif
 
-  String theUniqueId=getUniqueId("-" + String(switchRF[0]), "-" + String(switchRF[1]));
+  String theUniqueId = getUniqueId("-" + String(switchRF[0]), "-" + String(switchRF[1]));
 
-  createDiscoveryDeviceTrigger( 
-                  (char*)discovery_topic.c_str(), 
-                  (char*)theUniqueId.c_str(), 
-                  true,
-                  "", "", "", "" // device name, device manufacturer, device model, device mac,
+  createDiscoveryDeviceTrigger(
+      (char*)discovery_topic.c_str(),
+      (char*)theUniqueId.c_str(),
+      true,
+      "", "", "", "" // device name, device manufacturer, device model, device mac,
   );
-
-
 }
 #  endif
 
@@ -148,9 +145,9 @@ void RFtoMQTT() {
     Log.trace(F("RF Task running on core :%d" CR), xPortGetCoreID());
 #  endif
     SIGNAL_SIZE_UL_ULL MQTTvalue = mySwitch.getReceivedValue();
-    int length=mySwitch.getReceivedBitlength();
+    int length = mySwitch.getReceivedBitlength();
     const char* binary = dec2binWzerofill(MQTTvalue, length);
-    
+
     RFdata.set("value", (SIGNAL_SIZE_UL_ULL)MQTTvalue);
     RFdata.set("binary", binary);
     RFdata.set("protocol", (int)mySwitch.getReceivedProtocol());
@@ -159,13 +156,12 @@ void RFtoMQTT() {
     RFdata.set("tre_state", bin2tristate(binary));
 
     unsigned int* raw = mySwitch.getReceivedRawdata();
-    String rawDump="";
-    for (unsigned int i=0; i<= length*2; i++) {
+    String rawDump = "";
+    for (unsigned int i = 0; i <= length * 2; i++) {
       rawDump = rawDump + String(raw[i]) + ",";
     }
     RFdata.set("raw", rawDump.c_str());
-    
-    
+
 #  ifdef ZradioCC1101 // set Receive off and Transmitt on
     RFdata.set("mhz", receiveMhz);
 #  endif
@@ -343,5 +339,3 @@ void enableRFReceive() {
   mySwitch.enableReceive(RF_RECEIVER_GPIO);
 }
 #endif
-
-

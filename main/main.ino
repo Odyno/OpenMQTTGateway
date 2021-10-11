@@ -302,7 +302,7 @@ void pub(const char* topicori, JsonObject& data) {
 #  else
     SIGNAL_SIZE_UL_ULL value = data["value"];
     if (value != 0) {
-      topic = topic + "/" + String((int)value, (unsigned char)DEC) ;
+      topic = topic + "/" + String((int)value, (unsigned char)DEC);
     }
 #  endif
 #endif
