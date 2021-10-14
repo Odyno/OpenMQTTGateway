@@ -111,8 +111,7 @@ void RF2toMQTTdiscovery(JsonObject& data) {
                   (char*)getUniqueId(switchRF[1], "").c_str(), will_Topic,
                   switchRF[3], switchRF[4], switchRF[5], switchRF[6],
                   switchRF[7], 0, "", "", true, subjectMQTTtoRF2,
-                  "", "", "", "", false,
-                  stateClassNone);
+                  "", "", "", "", false);
 }
 #  endif
 
