@@ -286,15 +286,127 @@ bool to_bool(String const& s) { // thanks Chris Jester-Young from stackoverflow
   return s != "0";
 }
 
+/**
+ * @brief This function allows you to create a string from a JsonObject in according of platform. 
+ * 
+ * @param jsondata  the JsonObject
+ * @return char* the string
+ */
+const char* to_char(JsonObject& jsondata) {
+#if defined(ESP8266) || defined(ESP32) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
+  char JSONmessageBuffer[measureJson(jsondata) + 1];
+#else
+  char JSONmessageBuffer[JSON_MSG_BUFFER];
+#endif
+  serializeJson(jsondata, JSONmessageBuffer, sizeof(JSONmessageBuffer));
+  return JSONmessageBuffer;
+}
+
+/**
+ * @brief from unsigned long to chart *
+ * 
+ * @param payload 
+ * @return const char* 
+ */
+const char* to_char(unsigned long payload) {
+  char val[11];
+  sprintf(val, "%lu", payload);
+  return val;
+}
+
+/**
+ * @brief from unsigned long long to char *
+ * 
+ * @param payload 
+ * @return const char* 
+ */
+const char* to_char(unsigned long long payload) {
+  char val[21];
+  sprintf(val, "%llu", payload);
+  return val;
+}
+
+/**
+ * @brief from long to const char *
+ * 
+ * @param payload 
+ * @return const char* 
+ */
+const char* to_char(long payload) {
+  char val[11];
+  sprintf(val, "%ld", payload);
+  return val;
+}
+
+/**
+ * @brief from unsigned int to const char *
+ * 
+ * @param payload 
+ * @return const char* 
+ */
+const char* to_char(unsigned int payload) {
+  char val[12];
+  sprintf(val, "%u", payload);
+  return val;
+}
+
+/**
+ * @brief from int to const char *
+ * 
+ * @param payload 
+ * @return const char* 
+ */
+const char* to_char(int payload) {
+  char val[12];
+  sprintf(val, "%d", payload);
+  return val;
+}
+
+/**
+ * @brief from float to const char *
+ * 
+ * @param payload 
+ * @return const char* 
+ */
+const char* to_char(float payload) {
+  char val[12];
+  dtostrf(payload, 3, 1, val);
+  return val;
+}
+
+/**
+ * @brief from double to const char *
+ * 
+ * @param payload 
+ * @return const char* 
+ */
+const char* to_char(double payload) {
+  char val[16];
+  sprintf(val, "%f", payload);
+  return val;
+}
+
+/**
+ * @brief Publish the payload on default MQTT topic. This function is not SAFE, the connection can be not active
+ * 
+ * @param topicori suffix to add on default MQTT Topic
+ * @param payload  the message to sends
+ * @param retainFlag true if you what a retain 
+ */
 void pub(const char* topicori, const char* payload, bool retainFlag) {
   String topic = String(mqtt_topic) + String(gateway_name) + String(topicori);
   pubMQTT(topic.c_str(), payload, retainFlag);
 }
 
+/**
+ * @brief Publish the payload on default MQTT topic
+ * 
+ * @param topicori suffix to add on default MQTT Topic
+ * @param data The Json Object that rapresent the message
+ */
 void pub(const char* topicori, JsonObject& data) {
-  Log.notice(F("Subject: %s" CR), topicori);
+  Log.notice(F("Ask topicori %s with data %s" CR), topicori, to_char(data));
   digitalWrite(LED_SEND_RECEIVE, LED_SEND_RECEIVE_ON);
-  logJson(data);
   if (client.connected()) {
     String topic = String(mqtt_topic) + String(gateway_name) + String(topicori);
 #ifdef valueAsASubject
@@ -313,18 +425,12 @@ void pub(const char* topicori, JsonObject& data) {
 #endif
 
 #ifdef jsonPublishing
-    Log.trace(F("jsonPublishing" CR));
-#  if defined(ESP8266) || defined(ESP32) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-    char JSONmessageBuffer[measureJson(data) + 1];
-#  else
-    char JSONmessageBuffer[JSON_MSG_BUFFER];
-#  endif
-    serializeJson(data, JSONmessageBuffer, sizeof(JSONmessageBuffer));
-    pubMQTT(topic, JSONmessageBuffer);
+    Log.trace(F("jsonPubl - ON" CR));
+    pubMQTT(topic, to_char(data));
 #endif
 
 #ifdef simplePublishing
-    Log.trace(F("simplePublishing" CR));
+    Log.trace(F("simplePub - ON" CR));
     // Loop through all the key-value pairs in obj
     for (JsonPair p : data) {
 #  if defined(ESP8266)
@@ -350,126 +456,112 @@ void pub(const char* topicori, JsonObject& data) {
   }
 }
 
+/**
+ * @brief Publish the payload on default MQTT topic
+ * 
+ * @param topicori suffix to add on default MQTT Topic
+ * @param payload the message to sends
+ */
 void pub(const char* topicori, const char* payload) {
   if (client.connected()) {
     String topic = String(mqtt_topic) + String(gateway_name) + String(topicori);
-    Log.trace(F("Pub ack %s into: %s" CR), payload, topic.c_str());
     pubMQTT(topic, payload);
   } else {
     Log.warning(F("client not connected can't pub" CR));
   }
 }
 
-void pub_custom_topic(const char* topicori, JsonObject& data, boolean retain) {
+/**
+ * @brief Publish the payload on the topic with a retantion
+ * 
+ * @param topic  The topic where to publish
+ * @param data   The Json Object that rapresent the message
+ * @param retain true if you what a retain 
+ */
+void pub_custom_topic(const char* topic, JsonObject& data, boolean retain) {
   if (client.connected()) {
-#if defined(ESP8266) || defined(ESP32) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-    char JSONmessageBuffer[measureJson(data) + 1];
-#else
-    char JSONmessageBuffer[JSON_MSG_BUFFER];
-#endif
-    serializeJson(data, JSONmessageBuffer, sizeof(JSONmessageBuffer));
-    Log.trace(F("Pub json :%s into custom topic: %s" CR), JSONmessageBuffer, topicori);
-    pubMQTT(topicori, JSONmessageBuffer, retain);
+    pubMQTT(topic, to_char(data), retain);
   } else {
     Log.warning(F("client not connected can't pub" CR));
   }
 }
 
-// Low level MQTT functions
+/**
+ * @brief Low level MQTT functions without retain
+ * 
+ * @param topic  the topic
+ * @param payload  the payload
+ */
 void pubMQTT(const char* topic, const char* payload) {
-  client.publish(topic, payload);
+  pubMQTT(topic, payload, false);
 }
 
-void pubMQTT(const char* topicori, const char* payload, bool retainFlag) {
-  client.publish(topicori, payload, retainFlag);
+/**
+ * @brief Very Low level MQTT functions with retainFlaf
+ * 
+ * @param topic the topic 
+ * @param payload the payload
+ * @param retainFlag  true if retain the retain Flag
+ */
+void pubMQTT(const char* topic, const char* payload, bool retainFlag) {
+  Log.trace(F("[ OMG->MQTT ] topic: %s msg: %s " CR), topic, payload);
+  client.publish(topic, payload, retainFlag);
 }
 
 void pubMQTT(String topic, const char* payload) {
-  client.publish(topic.c_str(), payload);
+  pubMQTT(topic.c_str(), payload);
 }
 
 void pubMQTT(const char* topic, unsigned long payload) {
-  char val[11];
-  sprintf(val, "%lu", payload);
-  client.publish(topic, val);
+  pubMQTT(topic, to_char(payload));
 }
 
 void pubMQTT(const char* topic, unsigned long long payload) {
-  char val[21];
-  sprintf(val, "%llu", payload);
-  client.publish(topic, val);
+  pubMQTT(topic, to_char(payload));
 }
 
 void pubMQTT(const char* topic, String payload) {
-  client.publish(topic, payload.c_str());
+  pubMQTT(topic, payload.c_str());
 }
 
 void pubMQTT(String topic, String payload) {
-  client.publish(topic.c_str(), payload.c_str());
+  pubMQTT(topic.c_str(), payload.c_str());
 }
 
 void pubMQTT(String topic, int payload) {
-  char val[12];
-  sprintf(val, "%d", payload);
-  client.publish(topic.c_str(), val);
+  pubMQTT(topic.c_str(), to_char(payload));
 }
 
 void pubMQTT(String topic, unsigned long long payload) {
-  char val[21];
-  sprintf(val, "%llu", payload);
-  client.publish(topic.c_str(), val);
+  pubMQTT(topic.c_str(), to_char(payload));
 }
 
 void pubMQTT(String topic, float payload) {
-  char val[12];
-  dtostrf(payload, 3, 1, val);
-  client.publish(topic.c_str(), val);
+  pubMQTT(topic.c_str(), to_char(payload));
 }
 
 void pubMQTT(const char* topic, float payload) {
-  char val[12];
-  dtostrf(payload, 3, 1, val);
-  client.publish(topic, val);
+  pubMQTT(topic, to_char(payload));
 }
 
 void pubMQTT(const char* topic, int payload) {
-  char val[6];
-  sprintf(val, "%d", payload);
-  client.publish(topic, val);
+  pubMQTT(topic, to_char(payload));
 }
 
 void pubMQTT(const char* topic, unsigned int payload) {
-  char val[6];
-  sprintf(val, "%u", payload);
-  client.publish(topic, val);
+  pubMQTT(topic, to_char(payload));
 }
 
 void pubMQTT(const char* topic, long payload) {
-  char val[11];
-  sprintf(val, "%ld", payload);
-  client.publish(topic, val);
+  pubMQTT(topic, to_char(payload));
 }
 
 void pubMQTT(const char* topic, double payload) {
-  char val[16];
-  sprintf(val, "%f", payload);
-  client.publish(topic, val);
+  pubMQTT(topic, to_char(payload));
 }
 
 void pubMQTT(String topic, unsigned long payload) {
-  char val[11];
-  sprintf(val, "%lu", payload);
-  client.publish(topic.c_str(), val);
-}
-
-void logJson(JsonObject& jsondata) {
-#if defined(ESP8266) || defined(ESP32) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-  char JSONmessageBuffer[measureJson(jsondata) + 1];
-#else
-  char JSONmessageBuffer[JSON_MSG_BUFFER];
-#endif
-  serializeJson(jsondata, JSONmessageBuffer, sizeof(JSONmessageBuffer));
-  Log.notice(F("Received json : %s" CR), JSONmessageBuffer);
+  pubMQTT(topic.c_str(), to_char(payload));
 }
 
 bool cmpToMainTopic(const char* topicOri, const char* toAdd) {
@@ -1652,7 +1744,8 @@ void receivingMQTT(char* topicOri, char* datacallback) {
 
   if (!jsondata.isNull()) { // json object ok -> json decoding
     // log the received json
-    logJson(jsondata);
+    Log.notice(F("[ MQTT->OMG ]: %s" CR), to_char(jsondata));
+
 #ifdef ZgatewayPilight // ZgatewayPilight is only defined with json publishing due to its numerous parameters
     MQTTtoPilight(topicOri, jsondata);
 #endif
