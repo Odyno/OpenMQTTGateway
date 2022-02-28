@@ -45,8 +45,9 @@ ReceivedSignal receivedSignal[] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
 #if defined(ESP8266) || defined(ESP32) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
 //Time used to wait for an interval before checking system measures
 unsigned long timer_sys_measures = 0;
-#  define ARDUINOJSON_USE_LONG_LONG     1
-#  define ARDUINOJSON_ENABLE_STD_STRING 1
+#  define ARDUINOJSON_USE_LONG_LONG         1
+#  define ARDUINOJSON_ENABLE_STD_STRING     1
+#  define ARDUINOJSON_ENABLE_ARDUINO_STRING 1
 #endif
 
 #include <ArduinoJson.h>
@@ -56,7 +57,7 @@ unsigned long timer_sys_measures = 0;
 #include <string>
 
 StaticJsonDocument<JSON_MSG_BUFFER> modulesBuffer;
-JsonArray modules = modulesBuffer.to<JsonArray>();
+ArduinoJson::JsonArray modules = modulesBuffer.to<ArduinoJson::JsonArray>();
 
 #ifndef ZgatewayGFSunInverter
 // Arduino IDE compiles, it automatically creates all the header declarations for all the functions you have in your *.ino file.
@@ -139,6 +140,9 @@ struct GfSun2000Data {};
 #  include "config_GPIOKeyCode.h"
 #endif
 #ifdef ZmqttDiscovery
+#  include <HADiscovery.hpp>
+#  include <MQTTPublisher.hpp>
+
 #  include "config_mqttDiscovery.h"
 #endif
 #ifdef ZactuatorFASTLED
@@ -157,6 +161,7 @@ struct GfSun2000Data {};
 #  include "config_RS232.h"
 #endif
 /*------------------------------------------------------------------------*/
+#include <Utilities.hpp>
 
 void setupTLS(bool self_signed = false, uint8_t index = 0);
 
@@ -241,6 +246,18 @@ ESP8266WiFiMulti wifiMulti;
 
 // client link to pubsub mqtt
 PubSubClient client;
+
+#ifdef ZmqttDiscovery
+
+//serializeJson(modules, modulesAsString);
+
+MQTTPublisher iMQTTPublisher = MQTTPublisher(client);
+
+HADiscovery iHADiscovery = HADiscovery(iMQTTPublisher,
+                                       mqtt_topic,
+                                       gateway_name,
+                                       "MDL?");
+#endif
 
 void revert_hex_data(const char* in, char* out, int l) {
   //reverting array 2 by 2 to get the data in good order
@@ -1382,7 +1399,7 @@ void loop() {
 #ifdef ZmqttDiscovery
       if (disc) {
         if (!connectedOnce) {
-          pubMqttDiscovery(); // at first connection we publish the discovery payloads
+          pubOMGFeaturesOnMqttDiscovery(iHADiscovery); // at first connection we publish the discovery payloads
         }
       }
 #endif
@@ -1439,7 +1456,11 @@ void loop() {
       LORAtoMQTT();
 #endif
 #ifdef ZgatewayRF
+#  ifdef ZmqttDiscovery
+      RFtoMQTT(iHADiscovery);
+#  else
       RFtoMQTT();
+#  endif
 #endif
 #ifdef ZgatewayRF2
       RF2toMQTT();
@@ -1456,7 +1477,7 @@ void loop() {
 #ifdef ZgatewayBT
 #  ifdef ZmqttDiscovery
       if (disc)
-        launchBTDiscovery();
+        launchBTDiscovery(iHADiscovery);
 #  endif
 #  ifndef ESP32
       if (BTtoMQTT())
@@ -2084,7 +2105,7 @@ void MQTTtoSYS(char* topicOri, JsonObject& SYSdata) { // json object decoding
       if (SYSdata["discovery"].is<bool>()) {
         disc = SYSdata["discovery"];
         if (disc)
-          pubMqttDiscovery();
+          pubOMGFeaturesOnMqttDiscovery(iHADiscovery);
       } else {
         Log.error(F("Discovery command not a boolean" CR));
       }

@@ -25,9 +25,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include "User_config.h"
 
 #ifdef ZgatewayRF
+#  include <Utilities.hpp>
 
 #  ifdef ZradioCC1101
 #    include <ELECHOUSE_CC1101_SRC_DRV.h>
@@ -80,32 +82,6 @@ static char* dec2binWzerofill(unsigned long Dec, unsigned int bitLength) {
   return bin;
 }
 
-#  if defined(ZmqttDiscovery) && !defined(RF_DISABLE_TRANSMIT) && defined(RFmqttDiscovery)
-
-void RFtoMQTTdiscovery(SIGNAL_SIZE_UL_ULL MQTTvalue) {
-  //on the fly switch creation from received RF values
-  char val[11];
-  sprintf(val, "%lu", MQTTvalue);
-  Log.trace(F("RF Entity Discovered, create HA Discovery CFG" CR));
-  char* switchRF[2] = {val, "RF"};
-  Log.trace(F("CreateDiscoverySwitch: %s" CR), switchRF[1]);
-#    ifdef valueAsASubject
-  String discovery_topic = String(subjectRFtoMQTT) + "/" + String(switchRF[0]);
-#    else
-  String discovery_topic = String(subjectRFtoMQTT);
-#    endif
-
-  String theUniqueId = getUniqueId("-" + String(switchRF[0]), "-" + String(switchRF[1]));
-
-  announceDeviceTrigger(
-      false,
-      (char*)discovery_topic.c_str(),
-      "", "",
-      (char*)theUniqueId.c_str(),
-      "", "", "", "");
-}
-#  endif
-
 void setupRF() {
   //RF init parameters
   Log.notice(F("RF_EMITTER_GPIO: %d " CR), RF_EMITTER_GPIO);
@@ -125,7 +101,11 @@ void setupRF() {
   Log.trace(F("ZgatewayRF setup done" CR));
 }
 
+#  ifdef ZmqttDiscovery
+void RFtoMQTT(HADiscovery iHADiscovery) {
+#  else
 void RFtoMQTT() {
+#  endif
   if (mySwitch.available()) {
     StaticJsonDocument<JSON_MSG_BUFFER> jsonBuffer;
     JsonObject RFdata = jsonBuffer.to<JsonObject>();
@@ -158,8 +138,26 @@ void RFtoMQTT() {
 
     if (!isAduplicateSignal(MQTTvalue) && MQTTvalue != 0) { // conditions to avoid duplications of RF -->MQTT
 #  if defined(ZmqttDiscovery) && !defined(RF_DISABLE_TRANSMIT) && defined(RFmqttDiscovery) //component creation for HA
-      if (disc)
-        RFtoMQTTdiscovery(MQTTvalue);
+      if (disc) {
+        Log.trace(F("RF Entity Discovered, create HA Discovery CFG" CR));
+        char val[11];
+        sprintf(val, "%lu", MQTTvalue);
+        std::string discovery_topic = subjectRFtoMQTT;
+#    ifdef valueAsASubject
+        discovery_topic.append("/").append(val);
+#    endif
+        //create device
+        /* Set The Device */
+        StaticJsonDocument<JSON_MSG_BUFFER> jsonDeviceBuffer;
+        JsonObject omgDevice = jsonDeviceBuffer.to<JsonObject>();
+        iHADiscovery.makeOMGDevice(&omgDevice);
+
+        iHADiscovery.createDeviceTrigger(
+            OMG::getOMGUniqueId(val, "RF").c_str(), (char*)discovery_topic.c_str(),
+            "button_short_press", "turn_on",
+            omgDevice);
+      }
+
 #  endif
       pub(subjectRFtoMQTT, RFdata);
       // Casting "receivedSignal[o].value" to (unsigned long) because ArduinoLog doesn't support uint64_t for ESP's

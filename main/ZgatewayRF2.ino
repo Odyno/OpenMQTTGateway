@@ -89,17 +89,6 @@ void RF2toMQTTdiscovery(JsonObject& data) {
                String((int)data["groupbit"]) + "_" +
                String((unsigned long)data["address"]);
 
-  char* switchRF[8] = {"switch",
-                       (char*)switchname.c_str(),
-                       "",
-                       "",
-                       "",
-                       (char*)payloadonstr.c_str(),
-                       (char*)payloadoffstr.c_str(),
-                       ""};
-  // component type,name,availability topic,device class,value template,payload
-  // on, payload off, unit of measurement
-
   Log.trace(F("CreateDiscoverySwitch: %s" CR), switchRF[1]);
 
   // As RF2 433Mhz switches do not render their state, no state topic should be
@@ -107,12 +96,10 @@ void RF2toMQTTdiscovery(JsonObject& data) {
   // mode in HA with separate on and off icons.
   // The two separate on/off icons allow for subsequent on commands to support
   // the dimming feature of KAKU switches like ACM-300.
-  createDiscovery(switchRF[0], "", switchRF[1],
-                  (char*)getUniqueId(switchRF[1], "").c_str(), will_Topic,
-                  switchRF[3], switchRF[4], switchRF[5], switchRF[6],
-                  switchRF[7], 0, "", "", true, subjectMQTTtoRF2,
-                  "", "", "", "", false,
-                  stateClassNone);
+  iHADiscovery.createSwitch(OMG::getOMGUniqueId(switchname.c_str(), "RF2").c_str(), (char*)switchname.c_str() will_Topic, NULL,
+                            subjectMQTTtoRF2, (char*)payloadonstr.c_str(), (char*)payloadoffstr.c_str(),
+                            will_Topic, "", "",
+                            omgDevice);
 }
 #  endif
 

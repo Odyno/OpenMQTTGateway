@@ -28,6 +28,9 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#ifdef ZmqttDiscovery
+#  include <HADiscovery.hpp>
+#endif
 
 #if defined(ESP8266) || defined(ESP32)
 #  include <EEPROM.h>
@@ -35,7 +38,11 @@
 
 #ifdef ZgatewayRF
 extern void setupRF();
+#  ifdef ZmqttDiscovery
+extern void RFtoMQTT(HADiscovery iHADiscovery);
+#  else
 extern void RFtoMQTT();
+#  endif
 extern void MQTTtoRF(char* topicOri, char* datacallback);
 extern void MQTTtoRF(char* topicOri, JsonObject& RFdata);
 extern void disableRFReceive();

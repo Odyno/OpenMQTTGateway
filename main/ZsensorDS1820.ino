@@ -29,6 +29,8 @@
 #  include <DallasTemperature.h>
 #  include <OneWire.h>
 
+#  include <HADiscovery.hpp>
+
 OneWire owbus(DS1820_OWBUS_GPIO);
 DallasTemperature ds1820(&owbus);
 DeviceAddress ds1820_address, ds1820_devices[OW_MAX_SENSORS];
@@ -97,24 +99,17 @@ void setupZsensorDS1820() {
   ds1820.setWaitForConversion(false);
 }
 
-void pubOneWire_HADiscovery() {
+void pubOneWire_HADiscovery(HADiscovery iHADiscovery) {
   // If zmqttDiscovery is enabled, create a sensor topic for each DS18b20 sensor found on the bus, using addr as uniqueID
 #  ifdef ZmqttDiscovery
   // If zmqtt discovery is enabled, create a sensor topic for each DS18b20 sensor found on the bus, using addr as uniqueID
   if (disc) {
     for (int index = 0; index < ds1820_count; index++) {
-      createDiscovery("sensor",
-                      (char*)(String(OW_TOPIC) + "/" + ds1820_addr[index]).c_str(),
-                      (char*)("DS12B20_" + String(index + 1) + "_c").c_str(),
-                      (char*)(ds1820_addr[index] + "_c").c_str(),
-                      will_Topic,
-                      "temperature",
-                      jsonTempc,
-                      "", "", "°C",
-                      0, "", "", true, "",
-                      "", "", "", "", false,
-                      stateClassMeasurement // state class
-      );
+      const char* id = (char*)(ds1820_addr[index] + "_c").c_str();
+      const char* stateTopic = (char*)(String(OW_TOPIC) + "/" + ds1820_addr[index]).c_str();
+      const char* name = (char*)("DS12B20_" + String(index + 1) + "_c").c_str();
+      iHADiscovery.createSensor(id,
+                                stateTopic, name, jsonTempc, "°C", SensorDeviceClass::temperature, StateClass::measurement, will_Topic, omgDevice);
     }
   }
 #  endif

@@ -28,7 +28,14 @@
 
 Thanks to wolass https://github.com/wolass for suggesting me HM 10 and dinosd https://github.com/dinosd/BLE_PROXIMITY for inspiring me how to implement the gateway
 */
+
+#include <ArduinoLog.h>
+
 #include "User_config.h"
+
+#ifdef ZmqttDiscovery
+#  include <HADiscovery.hpp>
+#endif
 
 #ifdef ZgatewayBT
 
@@ -307,48 +314,77 @@ void strupp(char* beg) {
 }
 
 #  ifdef ZmqttDiscovery
-void DT24Discovery(const char* mac, const char* sensorModel_id) {
-#    define DT24parametersCount 6
+void DT24Discovery(const char* mac, const char* sensorModel_id, HADiscovery iHADiscovery) {
   Log.trace(F("DT24Discovery" CR));
-  const char* DT24sensor[DT24parametersCount][9] = {
-      {"sensor", "DT24-volt", mac, "power", jsonVolt, "", "", "V", stateClassMeasurement},
-      {"sensor", "DT24-amp", mac, "power", jsonCurrent, "", "", "A", stateClassMeasurement},
-      {"sensor", "DT24-watt", mac, "power", jsonPower, "", "", "W", stateClassMeasurement},
-      {"sensor", "DT24-watt-hour", mac, "power", jsonEnergy, "", "", "kWh", stateClassMeasurement},
-      {"sensor", "DT24-price", mac, "", jsonMsg, "", "", "", stateClassNone},
-      {"sensor", "DT24-temp", mac, "temperature", jsonTempc, "", "", "°C", stateClassMeasurement}
-      //component type,name,availability topic,device class,value template,payload on, payload off, unit of measurement
-  };
 
-  createDiscoveryFromList(mac, DT24sensor, DT24parametersCount, "DT24", "ATorch", sensorModel_id);
+  /* Set The Device */
+  StaticJsonDocument<JSON_MSG_BUFFER> jsonDeviceBuffer;
+  JsonObject DT24Device = jsonDeviceBuffer.to<JsonObject>();
+  iHADiscovery.makeDevice(&DT24Device, sensorModel_id, "DT24", "Atorch", NULL, mac);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "DT24", "volt").c_str(),
+                            mac, "DT24-volt", jsonVolt, "V", HADiscovery::SensorDeviceClass::voltage, HADiscovery::StateClass::measurement, will_Topic, DT24Device);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "DT24", "amp").c_str(),
+                            mac, "DT24-amp", jsonCurrent, "A", HADiscovery::SensorDeviceClass::current, HADiscovery::StateClass::measurement, will_Topic, DT24Device);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "DT24", "watt").c_str(),
+                            mac, "DT24-watt", jsonCurrent, "W", HADiscovery::SensorDeviceClass::power, HADiscovery::StateClass::measurement, will_Topic, DT24Device);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "DT24", "watt-hour").c_str(),
+                            mac, "DT24-watt-hour", jsonEnergy, "kWh", HADiscovery::SensorDeviceClass::energy, HADiscovery::StateClass::measurement, will_Topic, DT24Device);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "DT24", "price").c_str(),
+                            mac, "DT24-price", jsonMsg, "", HADiscovery::SensorDeviceClass::monetary, HADiscovery::StateClass::none, will_Topic, DT24Device);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "DT24", "temp").c_str(),
+                            mac, "DT24-temp", jsonTempc, "°C", HADiscovery::SensorDeviceClass::temperature, HADiscovery::StateClass::measurement, will_Topic, DT24Device);
 }
 
-void LYWSD03MMCDiscovery(const char* mac, const char* sensorModel) {
-#    define LYWSD03MMCparametersCount 4
+void LYWSD03MMCDiscovery(const char* mac, const char* sensorModel, HADiscovery iHADiscovery) {
   Log.trace(F("LYWSD03MMCDiscovery" CR));
-  const char* LYWSD03MMCsensor[LYWSD03MMCparametersCount][9] = {
-      {"sensor", "LYWSD03MMC-batt", mac, "battery", jsonBatt, "", "", "%", stateClassMeasurement},
-      {"sensor", "LYWSD03MMC-volt", mac, "", jsonVolt, "", "", "V", stateClassMeasurement},
-      {"sensor", "LYWSD03MMC-temp", mac, "temperature", jsonTempc, "", "", "°C", stateClassMeasurement},
-      {"sensor", "LYWSD03MMC-hum", mac, "humidity", jsonHum, "", "", "%", stateClassMeasurement}
-      //component type,name,availability topic,device class,value template,payload on, payload off, unit of measurement
-  };
 
-  createDiscoveryFromList(mac, LYWSD03MMCsensor, LYWSD03MMCparametersCount, "LYWSD03MMC", "Xiaomi", sensorModel);
+  /* Set The Device */
+  StaticJsonDocument<JSON_MSG_BUFFER> jsonDeviceBuffer;
+  JsonObject LYWSD03MMCDevice = jsonDeviceBuffer.to<JsonObject>();
+  iHADiscovery.makeDevice(&LYWSD03MMCDevice, "LYWSD03MMC", "Xiaomi", sensorModel, NULL, mac);
+
+  const char* state_topic = (std::string().append(subjectBTtoMQTT).append("/").append("mac")).c_str();
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "LYWSD03MMC", "batt").c_str(),
+                            state_topic, "LYWSD03MMC-batt", jsonBatt, "%", HADiscovery::SensorDeviceClass::battery, HADiscovery::StateClass::measurement, mac, LYWSD03MMCDevice);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "LYWSD03MMC", "volt").c_str(),
+                            state_topic, "LYWSD03MMC-volt", jsonVolt, "V", HADiscovery::SensorDeviceClass::voltage, HADiscovery::StateClass::measurement, mac, LYWSD03MMCDevice);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "LYWSD03MMC", "temp").c_str(),
+                            state_topic, "LYWSD03MMC-temp", jsonTempc, "°C", HADiscovery::SensorDeviceClass::temperature, HADiscovery::StateClass::measurement, mac, LYWSD03MMCDevice);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "LYWSD03MMC", "hum").c_str(),
+                            state_topic, "LYWSD03MMC-hum", jsonHum, "%", HADiscovery::SensorDeviceClass::humidity, HADiscovery::StateClass::measurement, mac, LYWSD03MMCDevice);
 }
 
-void MHO_C401Discovery(const char* mac, const char* sensorModel) {
-#    define MHO_C401parametersCount 4
+void MHO_C401Discovery(const char* mac, const char* sensorModel, HADiscovery iHADiscovery) {
   Log.trace(F("MHO_C401Discovery" CR));
-  const char* MHO_C401sensor[MHO_C401parametersCount][9] = {
-      {"sensor", "MHO_C401-batt", mac, "battery", jsonBatt, "", "", "%", stateClassMeasurement},
-      {"sensor", "MHO_C401-volt", mac, "", jsonVolt, "", "", "V", stateClassMeasurement},
-      {"sensor", "MHO_C401-temp", mac, "temperature", jsonTempc, "", "", "°C", stateClassMeasurement},
-      {"sensor", "MHO_C401-hum", mac, "humidity", jsonHum, "", "", "%", stateClassMeasurement}
-      //component type,name,availability topic,device class,value template,payload on, payload off, unit of measurement
-  };
 
-  createDiscoveryFromList(mac, MHO_C401sensor, MHO_C401parametersCount, "MHO_C401", "Xiaomi", sensorModel);
+  /* Set The Device */
+  StaticJsonDocument<JSON_MSG_BUFFER> jsonDeviceBuffer;
+  JsonObject MHO_C401Device = jsonDeviceBuffer.to<JsonObject>();
+  iHADiscovery.makeDevice(&MHO_C401Device, "MHO_C401", "Xiaomi", sensorModel, NULL, mac);
+
+  const char* state_topic = (std::string().append(subjectBTtoMQTT).append("/").append("mac")).c_str();
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "MHO_C401", "batt").c_str(),
+                            state_topic, "MHO_C401-batt", jsonBatt, "%", HADiscovery::SensorDeviceClass::battery, HADiscovery::StateClass::measurement, mac, MHO_C401Device);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "MHO_C401", "volt").c_str(),
+                            state_topic, "MHO_C401-volt", jsonVolt, "V", HADiscovery::SensorDeviceClass::voltage, HADiscovery::StateClass::measurement, mac, MHO_C401Device);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "MHO_C401", "temp").c_str(),
+                            state_topic, "MHO_C401-temp", jsonTempc, "°C", HADiscovery::SensorDeviceClass::temperature, HADiscovery::StateClass::measurement, mac, MHO_C401Device);
+
+  iHADiscovery.createSensor(OMG::getUniqueId(mac, "MHO_C401", "hum").c_str(),
+                            state_topic, "MHO_C401-hum", jsonHum, "%", HADiscovery::SensorDeviceClass::humidity, HADiscovery::StateClass::measurement, mac, MHO_C401Device);
 }
 
 void XMWSDJ04MMCDiscovery(const char* mac, const char* sensorModel) {
@@ -366,10 +402,9 @@ void XMWSDJ04MMCDiscovery(const char* mac, const char* sensorModel) {
 }
 
 #  else
-void LYWSD03MMCDiscovery(const char* mac, const char* sensorModel) {}
-void MHO_C401Discovery(const char* mac, const char* sensorModel) {}
-void DT24Discovery(const char* mac, const char* sensorModel_id) {}
-void XMWSDJ04MMCDiscovery(const char* mac, const char* sensorModel_id) {}
+void LYWSD03MMCDiscovery(const char* mac, const char* sensorModel, HADiscovery iHADiscovery) {}
+void MHO_C401Discovery(const char* mac, const char* sensorModel, HADiscovery iHADiscovery) {}
+void DT24Discovery(const char* mac, const char* sensorModel_id, HADiscovery iHADiscovery) {}
 #  endif
 
 #  ifdef ESP32
@@ -826,7 +861,7 @@ boolean valid_service_data(const char* data, int size) {
 
 #  ifdef ZmqttDiscovery
 // This function always should be called from the main core as it generates direct mqtt messages
-void launchBTDiscovery() {
+void launchBTDiscovery(HADiscovery iHADiscovery) {
   if (newDevices == 0)
     return;
 #    ifdef ESP32
@@ -851,52 +886,61 @@ void launchBTDiscovery() {
         p->sensorModel_id != TheengsDecoder::BLE_ID_NUM::GAEN) {
       String macWOdots = String(p->macAdr);
       macWOdots.replace(":", "");
-      if (p->sensorModel_id > TheengsDecoder::BLE_ID_NUM::UNKNOWN_MODEL &&
-          p->sensorModel_id < TheengsDecoder::BLE_ID_NUM::BLE_ID_MAX) {
-        Log.trace(F("Looking for Model_id: %d" CR), p->sensorModel_id);
-        std::string properties = decoder.getTheengProperties(p->sensorModel_id);
-        Log.trace(F("properties: %s" CR), properties.c_str());
-        std::string brand = decoder.getTheengAttribute(p->sensorModel_id, "brand");
-        std::string model = decoder.getTheengAttribute(p->sensorModel_id, "model");
-        std::string model_id = decoder.getTheengAttribute(p->sensorModel_id, "model_id");
-        if (!properties.empty()) {
-          StaticJsonDocument<JSON_MSG_BUFFER> jsonBuffer;
-          deserializeJson(jsonBuffer, properties);
-          for (JsonPair prop : jsonBuffer["properties"].as<JsonObject>()) {
-            Log.trace("Key: %s", prop.key().c_str());
-            Log.trace("Unit: %s", prop.value()["unit"].as<const char*>());
-            Log.trace("Name: %s", prop.value()["name"].as<const char*>());
-            String discovery_topic = String(subjectBTtoMQTT) + "/" + macWOdots;
-            String entity_name = String(model_id.c_str()) + "-" + String(prop.key().c_str());
-            String unique_id = macWOdots + "-" + String(prop.key().c_str());
+      Log.trace(F("Looking for Model_id: %d" CR), p->sensorModel_id);
+      std::string properties = decoder.getTheengProperties(p->sensorModel_id);
+      Log.trace(F("properties: %s" CR), properties.c_str());
+      std::string brand = decoder.getTheengAttribute(p->sensorModel_id, "brand");
+      std::string model = decoder.getTheengAttribute(p->sensorModel_id, "model");
+      std::string model_id = decoder.getTheengAttribute(p->sensorModel_id, "model_id");
+      if (!properties.empty()) {
+        //Create common device
+        StaticJsonDocument<JSON_MSG_BUFFER> jsonDeviceBuffer;
+        JsonObject theDevice = jsonDeviceBuffer.to<JsonObject>();
+
+        iHADiscovery.makeDevice(&theDevice,
+                                model.c_str(), // nome
+                                p->sensorModel_id.c_str(), //model
+                                brand.c_str(), // Manufactury
+                                "",
+                                macWOdots.c_str() //mac address
+        );
+        // Add Entity
+        StaticJsonDocument<JSON_MSG_BUFFER> jsonBuffer;
+        deserializeJson(jsonBuffer, properties);
+        for (JsonPair prop : jsonBuffer["properties"].as<JsonObject>()) {
+          Log.trace("Key: %s", prop.key().c_str());
+          Log.trace("Unit: %s", prop.value()["unit"].as<const char*>());
+          Log.trace("Name: %s", prop.value()["name"].as<const char*>());
+          String discovery_topic = String(subjectBTtoMQTT) + "/" + macWOdots;
+          String entity_name = String(model_id.c_str()) + "-" + String(prop.key().c_str());
+          String unique_id = macWOdots + "-" + String(prop.key().c_str());
 #    if OpenHABDiscovery
-            String value_template = "{{ value_json." + String(prop.key().c_str()) + "}}";
+          String value_template = "{{ value_json." + String(prop.key().c_str()) + "}}";
 #    else
-            String value_template = "{{ value_json." + String(prop.key().c_str()) + " | is_defined }}";
+          String value_template = "{{ value_json." + String(prop.key().c_str()) + " | is_defined }}";
 #    endif
-            createDiscovery("sensor",
-                            discovery_topic.c_str(), entity_name.c_str(), unique_id.c_str(),
-                            will_Topic, prop.value()["name"], value_template.c_str(),
-                            "", "", prop.value()["unit"],
-                            0, "", "", false, "",
-                            model.c_str(), brand.c_str(), model_id.c_str(), macWOdots.c_str(), false,
-                            stateClassMeasurement);
-          }
+          iHADiscovery.createSensor(
+              unique_id.c_str(),
+              discovery_topic.c_str(),
+              entity_name.c_str(),
+              value_template.c_str(),
+              prop.value()["unit"],
+              HADiscovery::SensorDeviceClass::generic, // TODO: prop.value()["name"] ??
+              HADiscovery::StateClass::measurement,
+              will_Topic,
+              theDevice);
         }
       } else if (p->sensorModel_id > BLEconectable::id::MIN &&
                  p->sensorModel_id < BLEconectable::id::MAX) {
         // Discovery of sensors from which we retrieve data only by connect
-        if (p->sensorModel_id == BLEconectable::id::DT24_BLE) {
-          DT24Discovery(macWOdots.c_str(), "DT24-BLE");
+        if (p->sensorModel_id.compare("DT24-BLE") == 0) {
+          DT24Discovery(macWOdots.c_str(), p->sensorModel_id.c_str(), iHADiscovery);
         }
-        if (p->sensorModel_id == BLEconectable::id::LYWSD03MMC) {
-          LYWSD03MMCDiscovery(macWOdots.c_str(), "LYWSD03MMC");
+        if (p->sensorModel_id.compare("LYWSD03MMC") == 0) {
+          LYWSD03MMCDiscovery(macWOdots.c_str(), p->sensorModel_id.c_str(), iHADiscovery);
         }
-        if (p->sensorModel_id == BLEconectable::id::MHO_C401) {
-          MHO_C401Discovery(macWOdots.c_str(), "MHO-C401");
-        }
-        if (p->sensorModel_id == BLEconectable::id::XMWSDJ04MMC) {
-          XMWSDJ04MMCDiscovery(macWOdots.c_str(), "XMWSDJ04MMC");
+        if (p->sensorModel_id.compare("MHO-C401") == 0) {
+          MHO_C401Discovery(macWOdots.c_str(), p->sensorModel_id.c_str(), iHADiscovery);
         }
       } else {
         Log.trace(F("Device UNKNOWN_MODEL %s" CR), p->macAdr);
