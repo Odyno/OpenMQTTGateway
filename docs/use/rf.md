@@ -115,7 +115,7 @@ Other useful definitions can be:
 * `#define RF_DISABLE_TRANSMIT` To disable the transmit functions and free up the pin for other uses, add (or uncomment) this line to the `config_rf.h` file.
 * `#define repeatRFwMQTT true` To enable repeating the RF signal received by the gateway, set this parameter to true in the `config_rf.h` file.
 * `#define RF_on_HAS_as_DeviceTrigger` To send a Home Assistant Device Trigger Message for each RF signal received, add (or uncomment) this line in the `config_rf.h` file. Note that this action also depends on the `ZmqttDiscovery` settings.
-* `#define RF_on_HAS_as_MQTT_Sensor` To send a Home Assistant MQTT sensor message for each RF signal received, add (or uncomment) this line in the `config_rf.h` file. Note that this action also depends on the `ZmqttDiscovery` settings.
+* `#define RF_on_HAS_as_MQTTSensor` To send a Home Assistant MQTT sensor message for each RF signal received, add (or uncomment) this line in the `config_rf.h` file. Note that this action also depends on the `ZmqttDiscovery` settings.
 
 
 

@@ -1106,7 +1106,7 @@ void pubMqttDiscovery() {
 #  endif
 
 // in addition to the MQTT Device Discovery
-#  if defined(ZgatewayRF) && defined(RF_on_HAS_as_MQTTSencor)
+#  if defined(ZgatewayRF) && defined(RF_on_HAS_as_MQTTSensor)
   // Sensor to display RF received value
   Log.trace(F("gatewayRFDiscovery" CR));
   char* gatewayRF[8] = {"sensor", "gatewayRF", "", "", jsonVal, "", "", ""};
