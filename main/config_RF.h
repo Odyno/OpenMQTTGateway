@@ -29,14 +29,6 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
-#ifdef ZgatewayRF
-extern void setupRF();
-extern void RFtoX();
-extern void XtoRF(const char* topicOri, const char* datacallback);
-extern void XtoRF(const char* topicOri, JsonObject& RFdata);
-extern void disableRFReceive();
-extern void enableRFReceive(float rfFrequency, int rfReceiverGPIO, int rfEmitterGPIO);
-#endif
 #ifdef ZgatewayRF2
 extern void RF2toX();
 extern void XtoRF2(const char* topicOri, const char* datacallback);

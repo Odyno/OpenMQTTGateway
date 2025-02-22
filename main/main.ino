@@ -25,6 +25,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include "User_config.h"
 
 enum GatewayState {
@@ -236,10 +237,11 @@ struct GfSun2000Data {};
 #  include "config_SERIAL.h"
 #endif
 /*------------------------------------------------------------------------*/
-
-void setupTLS(int index = CNT_DEFAULT_INDEX);
+/*-----------------done load all configurations---------------------------*/
+/*------------------------------------------------------------------------*/
 
 char ota_pass[parameters_size] = gw_password;
+
 #ifdef USE_MAC_AS_GATEWAY_NAME
 #  undef WifiManager_ssid
 #  undef ota_hostname
@@ -247,16 +249,22 @@ char ota_pass[parameters_size] = gw_password;
 char WifiManager_ssid[MAC_NAME_MAX_LEN];
 char ota_hostname[MAC_NAME_MAX_LEN];
 #endif
+
 int failure_number_ntwk = 0; // number of failure connecting to network
+
 int failure_number_mqtt = 0; // number of failure connecting to MQTT
 
 static unsigned long last_ota_activity_millis = 0;
+
 // Global struct to store live SYS configuration data
 SYSConfig_s SYSConfig;
 
 bool failSafeMode = false;
+
 bool ProcessLock = true; // Process lock when we want to use a critical function like OTA for example
+
 static bool mqttSetupPending = true;
+
 static int cnt_index = CNT_DEFAULT_INDEX;
 
 #ifdef ESP32
@@ -312,6 +320,56 @@ ESP8266WiFiMulti wifiMulti;
 #  include <Ethernet.h>
 #endif
 
+/*
+---------------------  Start Global Object Definitions
+*/
+#if defined(ZwebUI) && defined(ESP32)
+#  include <WebServer.h> // Docs for this are here - https://github.com/espressif/arduino-esp32/tree/master/libraries/WebServer
+WebServer server(80);
+#endif
+
+#if defined(ZgatewayRF) || defined(ZgatewayRF2) || defined(ZgatewayPilight) || defined(ZactuatorSomfy) || defined(ZgatewayRTL_433)
+#  include "rf/ZCommonRF.h"
+ZCommonRF iZCommonRF;
+
+#  if defined(ZwebUI) && defined(ESP32)
+#    include "rf/WebUIHandlerRF.h"
+WebUIHandlerRF iWebUIHandlerRF(server, iZCommonRF, modules);
+#  endif
+
+#  ifdef ZgatewayRF
+#    include "rf/rcswitch/ZGatewayRF.h"
+ZGatewayRF iZGatewayRF;
+#  endif
+#endif
+
+#if MQTT_BROKER_MODE
+#  include "mqtt/ZCommonMQTT.h"
+std::unique_ptr<MQTTServer> mqtt;
+#else
+std::unique_ptr< ::Client> eClient;
+std::unique_ptr<PicoMQTT::Client> mqtt;
+#endif
+
+/*
+---------------------  Start Function Definitions
+*/
+#include "main_function.h"
+
+template <typename T>
+void Config_update(JsonObject& data, const char* key, T& var);
+template <typename T>
+void Config_update(JsonObject& data, const char* key, T& var) {
+  if (data.containsKey(key)) {
+    if (var != data[key].as<T>()) {
+      var = data[key].as<T>();
+      Log.notice(F("Config %s changed to: %T" CR), key, data[key].as<T>());
+    } else {
+      Log.notice(F("Config %s unchanged, currently: %T" CR), key, data[key].as<T>());
+    }
+  }
+}
+
 void handle_autodiscovery() {
 #ifdef ZmqttDiscovery
   static bool connectedOnce = false;
@@ -336,49 +394,6 @@ void handle_autodiscovery() {
 
   connectedOnce = true;
 #endif
-}
-
-#if MQTT_BROKER_MODE
-
-class MQTTServer : public PicoMQTT::Server {
-public:
-  size_t get_client_count() const {
-    return clients.size();
-  }
-
-  bool connected() const {
-    return !clients.empty();
-  }
-
-protected:
-  virtual void on_subscribe(const char* client_id, const char* topic) override {
-    // Whenever a client subscribes successfully to some topic, see if this is likely a subscription to a
-    // autodiscovery topic.  If it is, fire handle_autodiscovery().
-    const String pattern(topic);
-    const bool is_autodiscovery_subscription = (pattern == "#") || (pattern.startsWith(String(discovery_prefix) + "/"));
-    if (is_autodiscovery_subscription)
-      handle_autodiscovery();
-  }
-};
-
-std::unique_ptr<MQTTServer> mqtt;
-#else
-std::unique_ptr< ::Client> eClient;
-std::unique_ptr<PicoMQTT::Client> mqtt;
-#endif
-
-template <typename T> // Declared here to avoid pre-compilation issue (missing "template" in auto declaration by pio)
-void Config_update(JsonObject& data, const char* key, T& var);
-template <typename T>
-void Config_update(JsonObject& data, const char* key, T& var) {
-  if (data.containsKey(key)) {
-    if (var != data[key].as<T>()) {
-      var = data[key].as<T>();
-      Log.notice(F("Config %s changed to: %T" CR), key, data[key].as<T>());
-    } else {
-      Log.notice(F("Config %s unchanged, currently: %T" CR), key, data[key].as<T>());
-    }
-  }
 }
 
 /*
@@ -1313,6 +1328,10 @@ void updateAndHandleLEDsTask() {
 }
 
 void setup() {
+#ifdef ZgatewayRF
+  iZCommonRF.addGatewayRF(ACTIVE_RF, &iZGatewayRF);
+#endif
+
   //Launch serial for debugging purposes
   Serial.begin(SERIAL_BAUD);
   Log.begin(LOG_LEVEL, &Serial);
@@ -1455,7 +1474,15 @@ void setup() {
 
   delay(1500);
 #if defined(ZgatewayRF) || defined(ZgatewayPilight) || defined(ZgatewayRTL_433) || defined(ZgatewayRF2) || defined(ZactuatorSomfy)
-  setupCommonRF();
+
+  //setupCommonRF();
+  iZCommonRF.setupCommonRF();
+
+  //SETUP WEBUI
+#  if defined(ZwebUI) && defined(ESP32)
+  server.on("/rf", HTTP_GET, std::bind(&WebUIHandlerRF::handleRF, &iWebUIHandlerRF)); // Configure RF
+#  endif
+
 #endif
 #ifdef ZsensorBME280
   setupZsensorBME280();
@@ -2572,7 +2599,8 @@ void loop() {
       stateLORAMeasures();
 #endif
 #if defined(ZgatewayRTL_433) || defined(ZgatewayPilight) || defined(ZgatewayRF) || defined(ZgatewayRF2) || defined(ZactuatorSomfy)
-      stateRFMeasures();
+      //stateRFMeasures();
+      iZCommonRF.stateRFMeasures();
 #endif
 #if defined(ZwebUI) && defined(ESP32)
       stateWebUIStatus();
@@ -2650,7 +2678,8 @@ void loop() {
 #  endif
 #endif
 #ifdef ZgatewayRF
-    RFtoX();
+    //RFtoX();
+    iZCommonRF.getCurrentGatewayRF()->RFtoX();
 #endif
 #ifdef ZgatewayRF2
     RF2toX();
@@ -2982,14 +3011,16 @@ void receivingDATA(const char* topicOri, const char* datacallback) {
     XtoPilight(strTopicOri.c_str(), jsondata);
 #endif
 #if defined(ZgatewayRTL_433) || defined(ZgatewayPilight) || defined(ZgatewayRF) || defined(ZgatewayRF2) || defined(ZactuatorSomfy)
-    XtoRFset(strTopicOri.c_str(), jsondata);
+    //XtoRFset(strTopicOri.c_str(), jsondata);
+    iZCommonRF.XtoRFset(strTopicOri.c_str(), jsondata);
 #endif
 #if jsonReceiving
 #  ifdef ZgatewayLORA
     XtoLORA(strTopicOri.c_str(), jsondata);
 #  endif
 #  ifdef ZgatewayRF
-    XtoRF(strTopicOri.c_str(), jsondata);
+    //XtoRF(strTopicOri.c_str(), jsondata);
+    iZCommonRF.getCurrentGatewayRF()->XtoRF(strTopicOri.c_str(), jsondata);
 #  endif
 #  ifdef ZgatewayRF2
     XtoRF2(strTopicOri.c_str(), jsondata);
@@ -3045,7 +3076,8 @@ void receivingDATA(const char* topicOri, const char* datacallback) {
     XtoLORA(strTopicOri.c_str(), datacallback);
 #  endif
 #  ifdef ZgatewayRF
-    XtoRF(strTopicOri.c_str(), datacallback);
+    //XtoRF(strTopicOri.c_str(), datacallback);
+    iZCommonRF.getCurrentGatewayRF()->XtoRF(strTopicOri.c_str(), datacallback);
 #  endif
 #  ifdef ZgatewayRF315
     XtoRF315(strTopicOri.c_str(), datacallback);

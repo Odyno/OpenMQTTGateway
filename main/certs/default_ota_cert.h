@@ -1,3 +1,5 @@
+#include "Arduino.h"
+
 // The certificate must be in PEM ascii format.
 // The default certificate is for ota.openmqttgateway.com
 const char* OTAserver_cert PROGMEM = R"EOF("
