@@ -394,10 +394,10 @@ void disableRFReceive() {
  *
  * @note If RF_DISABLE_TRANSMIT is defined, the RF transmitter will be disabled.
  */
-void enableRFReceive() {
-  float rfFrequency = RFConfig.frequency;
-  int rfReceiverGPIO = RF_RECEIVER_GPIO;
-  int rfEmitterGPIO = RF_EMITTER_GPIO;
+void enableRFReceive(
+    float rfFrequency = RFConfig.frequency,
+    int rfReceiverGPIO = RF_RECEIVER_GPIO,
+    int rfEmitterGPIO = RF_EMITTER_GPIO) {
   Log.notice(F("[RF] Enable RF Receiver: %fMhz, RF_EMITTER_GPIO: %d, RF_RECEIVER_GPIO: %d" CR), rfFrequency, rfEmitterGPIO, rfReceiverGPIO);
 
 #  ifdef RF_DISABLE_TRANSMIT
