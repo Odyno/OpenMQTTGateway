@@ -1480,7 +1480,7 @@ void setup() {
 
   //SETUP WEBUI
 #  if defined(ZwebUI) && defined(ESP32)
-  server.on("/rf", HTTP_GET, std::bind(&WebUIHandlerRF::handleRF, &iWebUIHandlerRF)); // Configure RF
+  iWebUIHandlerRF.setup();
 #  endif
 
 #endif

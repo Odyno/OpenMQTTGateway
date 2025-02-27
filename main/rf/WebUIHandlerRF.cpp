@@ -1,11 +1,13 @@
 #include "WebUIHandlerRF.h"
 
-#include <ArduinoLog.h>
+#if defined(ZgatewayRF) || defined(ZgatewayPilight) || defined(ZgatewayRTL_433) || defined(ZgatewayRF2) || defined(ZactuatorSomfy)
 
-#include "../User_config.h"
-#include "../config_RF.h"
-#include "../config_WebContent.h"
-#include "../config_WebUI.h"
+#  include <ArduinoLog.h>
+
+#  include "../User_config.h"
+#  include "../config_RF.h"
+#  include "../config_WebContent.h"
+#  include "../config_WebUI.h"
 
 WebUIHandlerRF::WebUIHandlerRF(WebServer& server, ZCommonRF& zCommonRF, JsonArray& modules) : iWebServer(server), iZCommonRF(zCommonRF), iModules(modules) {}
 
@@ -106,3 +108,11 @@ String WebUIHandlerRF::generateActiveReceiverOptions(int currentSelection) {
   }
   return optionsHtml;
 }
+
+void WebUIHandlerRF::setup() {
+  iWebServer.on("/rf", HTTP_GET, [&]() {
+    handleRF();
+  });
+}
+
+#endif // defined(ZgatewayRF) || defined(ZgatewayPilight) || defined(ZgatewayRTL_433) || defined(ZgatewayRF2) || defined(ZactuatorSomfy)

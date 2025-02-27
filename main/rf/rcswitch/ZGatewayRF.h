@@ -145,7 +145,7 @@ private:
    *
    * @note If RF_DISABLE_TRANSMIT is defined, the RF transmitter will be disabled.
    */
-  void enableRFReceive();
+  void enableRFReceive(float rfFrequency, int rfReceiverGPIO, int rfEmitterGPIO);
 
   static const char* bin2tristate(const char* bin);
 
