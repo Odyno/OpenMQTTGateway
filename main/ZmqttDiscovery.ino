@@ -23,9 +23,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
+#include <ArduinoJson.h>
+#include <ArduinoLog.h>
+
 #include "User_config.h"
 
 #ifdef ZmqttDiscovery
+#  include "config_mqttDiscovery.h"
 
 String getMacAddress() {
   uint8_t baseMac[6];
@@ -89,106 +94,145 @@ void createDiscoveryFromList(const char* mac,
 #  endif
 
 /**
- * @brief Create a message for Discovery Device Trigger. For HA @see https://www.home-assistant.io/integrations/device_trigger.mqtt/
- * @param use_gateway_info      Boolean where true mean use the OMG information as Device Information
- * @param topic                 The Topic  where the trigger will publish the content
+ * @brief Announce that the Gateway have the ability to raise Trigger. 
+ * This function provide the configuration of the MQTT Device trigger ( @see https://www.home-assistant.io/integrations/device_trigger.mqtt/ ). 
+ * All messages published by this function will be interpreted as configuration messages of Gateway Triggers. 
+ * Instead, all messages published on the "triggerTopic" will be interpreted as Gateway trigger.
+ *
+ * @param triggerTopic          Mandatory - The MQTT topic subscribed to receive trigger events.
  * @param type                  The type of the trigger, e.g. button_short_press. Entries supported by the HA Frontend: button_short_press, button_short_release, button_long_press, button_long_release, button_double_press, button_triple_press, button_quadruple_press, button_quintuple_press. If set to an unsupported value, will render as subtype type, e.g. button_1 spammed with type set to spammed and subtype set to button_1
  * @param subtype               The subtype of the trigger, e.g. button_1. Entries supported by the HA frontend: turn_on, turn_off, button_1, button_2, button_3, button_4, button_5, button_6. If set to an unsupported value, will render as subtype type, e.g. left_button pressed with type set to button_short_press and subtype set to left_button
- * @param unique_id             Valid only if gateway entry is false, The IDs that uniquely identify the device. For example a serial number.
- * @param device_name           Valid only if gateway entry is false, The name of the device.
- * @param device_manufacturer   Valid only if gateway entry is false, The manufacturer of the device.
- * @param device_model          Valid only if gateway entry is false, The model of the device.
- * @param device_id            Valid only if gateway entry is false, The connection of the device to the outside world
+ * @param object_id             The object_id of the trigger. 
+ * @param value_template        The template to render the value of the trigger. The template can use the variables trigger.id, trigger.type, trigger.subtype, trigger.payload, trigger.payload_json, trigger.topic, trigger.timestamp, trigger.value, trigger.value_json. The template can be a string or a JSON object. If the template is a JSON object, it must be a valid JSON object. If the template is a string, it will be rendered as a string. If the template is a JSON object, it will be rendered as a JSON object.
  */
-void announceDeviceTrigger(bool use_gateway_info, char* topic, char* type, char* subtype, char* unique_id, char* device_name, char* device_manufacturer, char* device_model, char* device_id) {
+void announceGatewayTrigger(const char* triggerTopic,
+                            const char* type,
+                            const char* subtype,
+                            const char* object_id,
+                            const char* value_template) {
   //Create The Json
   StaticJsonDocument<JSON_MSG_BUFFER> jsonBuffer;
   JsonObject sensor = jsonBuffer.to<JsonObject>();
 
-  // SET Default Configuration
-  sensor["automation_type"] = "trigger"; // The type of automation, must be ‘trigger’.
+  /**
+   * The type of automation, must be ‘trigger’.
+   * @see https://www.home-assistant.io/integrations/device_trigger.mqtt/#automation_type 
+   */
+  sensor["automation_type"] = "trigger";
 
-  //SET TYPE
+  /**
+   * Must be device_automation. Only allowed and required in MQTT auto discovery device messages.
+   * @see https://www.home-assistant.io/integrations/device_trigger.mqtt/#platform
+   * @see https://www.home-assistant.io/integrations/mqtt/#device-discovery-payload
+   */
+  sensor["platform "] = "device_automation";
+
+  // The MQTT topic subscribed to receive trigger events.
+  if (triggerTopic && triggerTopic[0]) {
+    char state_topic[mqtt_topic_max_size];
+
+    strcpy(state_topic, mqtt_topic);
+    strcat(state_topic, gateway_name);
+    strcat(state_topic, triggerTopic);
+
+    /**
+     * "info_topic" is not a standard field, for the message is required the filed "topic", but this filed is reserved and it is used to know where to publish the topic.
+     * If we want to send on the message the topic information is usefull to use this "info_topic" that will be not delete by the send function but converted to "topic"
+     */
+    sensor["info_topic"] = state_topic;
+  } else {
+    Log.error(F("[RF] Error: topic is mandatory for device trigger Discovery" CR));
+    return;
+  }
+
+  /**
+   * The type of the trigger, e.g. button_short_press. 
+   * Entries supported by the HA frontend: button_short_press, button_short_release, button_long_press, button_long_release, button_double_press, button_triple_press, button_quadruple_press, button_quintuple_press.
+   * If set to an unsupported value, will render as subtype type, e.g. button_1 spammed with type set to spammed and subtype set to button_1
+   */
   if (type && type[0] != 0) {
     sensor["type"] = type;
   } else {
     sensor["type"] = "button_short_press";
   }
 
-  //SET SUBTYPE
+  /**
+   * The subtype of the trigger, e.g. turn_on. 
+   * Entries supported by the frontend: turn_on, turn_off, button_1, button_2, button_3, button_4, button_5, button_6. 
+   * If set to an unsupported value, will render as subtype type, e.g. left_button pressed with type set to button_short_press and subtype set to left_button
+   */
   if (subtype && subtype[0] != 0) {
     sensor["subtype"] = subtype;
   } else {
     sensor["subtype"] = "turn_on";
   }
 
-  /* Set The topic */
-  if (topic && topic[0]) {
-    char state_topic[mqtt_topic_max_size];
+  // ------------------   START DEVICE DECLARATION  --------------------------------------------------
+  // TODO: This section, like the almost identical one in createDiscovery, should be placed in a
+  //       separate function and managed specifically to avoid errors in representing the device
+  //       in the HASS world.
+  // -------------------------------------------------------------------------------------------------
 
-    strcpy(state_topic, mqtt_topic);
-    strcat(state_topic, gateway_name);
-
-    strcat(state_topic, topic);
-    sensor["info_topic"] = state_topic;
-  }
-
-  /* Set The Devices */
+  // Information about the device: this device trigger is a part of to tie it into the HA device registry.
   StaticJsonDocument<JSON_MSG_BUFFER> jsonDeviceBuffer;
   JsonObject device = jsonDeviceBuffer.to<JsonObject>();
-  JsonArray identifiers = device.createNestedArray("identifiers");
 
-  if (use_gateway_info) {
-    device["name"] = gateway_name;
+  // A link to the webpage that can manage the configuration of this device.
+  if (ethConnected) {
+#  ifdef ESP32_ETHERNET
+    device["configuration_url"] = String("http://") + String(ETH.localIP().toString()) + String("/"); //configuration_url
+#  endif
+  } else {
+    device["configuration_url"] = String("http://") + String(WiFi.localIP().toString()) + String("/"); //configuration_url
+  }
+
+  /*
+  * A list of connections of the device to the outside world as a list of tuples [connection_type, connection_identifier]. 
+  * For example the MAC address of a network interface: "connections": [["mac", "02:5b:26:a8:dc:12"]].
+  */
+  JsonArray connections = device.createNestedArray("connections");
+  JsonArray connection_mac = connections.createNestedArray();
+  connection_mac.add("mac");
+  connection_mac.add(getMacAddress());
+
+  // A list of IDs that uniquely identify the device. For example a serial number.
+  String unique_id = String(getMacAddress());
+  JsonArray identifiers = device.createNestedArray("identifiers");
+  identifiers.add(unique_id);
+
+  // The manufacturer of the device.
+  device["mf"] = GATEWAY_MANUFACTURER;
+
+  // The model of the device.
 #  ifndef GATEWAY_MODEL
-    String model = "";
-    serializeJson(modules, model);
-    device["model"] = model;
+  String model = "";
+  serializeJson(modules, model);
+  device["mdl"] = model;
 #  else
-    device["model"] = GATEWAY_MODEL;
+  device["mdl"] = GATEWAY_MODEL;
 #  endif
 
-    device["manufacturer"] = GATEWAY_MANUFACTURER;
-    device["sw_version"] = OMG_VERSION;
-    identifiers.add(getMacAddress());
+  // The name of the device.
+  device["name"] = String(gateway_name);
+  device["sw"] = OMG_VERSION;
+  // ------------------   END DEVICE DECLARATION  ------------------ //
 
-  } else {
-    char deviceid[13];
-    memcpy(deviceid, &unique_id[0], 12);
-    deviceid[12] = '\0';
-
-    identifiers.add(deviceid);
-
-    /*Set Connection */
-    if (device_id && device_id[0] != 0) {
-      JsonArray connections = device.createNestedArray("connections");
-      JsonArray connection_mac = connections.createNestedArray();
-      connection_mac.add("mac");
-      connection_mac.add(device_id);
-    }
-
-    //Set manufacturer
-    if (device_manufacturer && device_manufacturer[0]) {
-      device["manufacturer"] = device_manufacturer;
-    }
-
-    //Set name
-    if (device_name && device_name[0]) {
-      device["name"] = device_name;
-    }
-
-    // set The Model
-    if (device_model && device_model[0]) {
-      device["model"] = device_model;
-    }
-
-    device["via_device"] = gateway_name; //device name of the board
-  }
   sensor["device"] = device; //device representing the board
 
-  /* Publish on the topic */
-  String topic_to_publish = String(discovery_prefix) + "/device_automation/" + String(Gateway_Short_Name) + "/" + String(unique_id) + "/config";
-  Log.trace(F("Announce Device Trigger  %s" CR), topic_to_publish.c_str());
+  if (value_template && value_template[0]) {
+    sensor["value_template"] = String(value_template);
+  }
+
+  /* Publish on the topic 
+     The discovery topic needs to be: <discovery_prefix>/device_automation/[<node_id>/]<object_id>/config. 
+     
+     Note that only one trigger may be defined per unique discovery topic. 
+     Also note that the combination of type and subtype should be unique for a device.
+   
+   */
+
+  String topic_to_publish = String(discovery_prefix) + "/device_automation/" + String(unique_id) + "/" + object_id + "/config";
+  Log.trace(F("Announce Gatewy Trigger  %s" CR), topic_to_publish.c_str());
   sensor["topic"] = topic_to_publish;
   sensor["retain"] = true;
   enqueueJsonObject(sensor);
@@ -1061,7 +1105,8 @@ void pubMqttDiscovery() {
   }
 #  endif
 
-#  ifdef ZgatewayRF
+// in addition to the MQTT Device Discovery
+#  if defined(ZgatewayRF) && defined(RF_on_HAS_as_MQTTSensor)
   // Sensor to display RF received value
   Log.trace(F("gatewayRFDiscovery" CR));
   char* gatewayRF[8] = {"sensor", "gatewayRF", "", "", jsonVal, "", "", ""};

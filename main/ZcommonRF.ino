@@ -144,7 +144,7 @@ void enableActiveReceiver() {
 #  ifdef ZgatewayRF
     case ACTIVE_RF:
       initCC1101();
-      enableRFReceive();
+      enableRFReceive(RFConfig.frequency, RF_RECEIVER_GPIO, RF_EMITTER_GPIO);
       currentReceiver = ACTIVE_RF;
       break;
 #  endif

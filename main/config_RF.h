@@ -35,7 +35,7 @@ extern void RFtoX();
 extern void XtoRF(const char* topicOri, const char* datacallback);
 extern void XtoRF(const char* topicOri, JsonObject& RFdata);
 extern void disableRFReceive();
-extern void enableRFReceive();
+extern void enableRFReceive(float rfFrequency, int rfReceiverGPIO, int rfEmitterGPIO);
 #endif
 #ifdef ZgatewayRF2
 extern void RF2toX();
@@ -159,7 +159,8 @@ const char parameters[51][4][24] = {
 #define RF_EMITTER_REPEAT  20
 #define RF2_EMITTER_REPEAT 2 // Actual repeats is 2^R, where R is the here configured amount
 //#define RF_DISABLE_TRANSMIT //Uncomment this line to disable RF transmissions. (RF Receive will work as normal.)
-#define RFmqttDiscovery true //uncomment this line so as to create a discovery switch for each RF signal received
+//#define RF_on_HAS_as_DeviceTrigger //uncomment this line so as to create a Home Assistant device trigger for each RF signal received
+#define RF_on_HAS_as_MQTTSensor //uncomment this line so as to create a Home Assistant MQTT sensor for each RF signal received
 
 /*-------------------RF2 topics & parameters----------------------*/
 //433Mhz newremoteswitch MQTT Subjects and keys
