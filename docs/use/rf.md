@@ -230,7 +230,10 @@ Generate your RF signals by pressing a remote button or other and you will see :
 #### Enabling RAW packet return support
 First, you need to compile a binary with `Pilight_rawEnabled true` uncommented in config_RF.h.
 
-Once the device is online, you can turn on the RAW packet return support with the following MQTT command:
+Once the device is online and the active receiver is Pilght, you can toggle raw packet return.
+If current active receiver is not Pilight the toggle command will be ignored and harmless error message will be published.
+
+You can turn on the RAW packet return support with the following MQTT command:
 
 `mosquitto_pub -t "home/OpenMQTTGateway/commands/MQTTtoPilight/protocols" -m '{"rawEnabled":true}'`
 
