@@ -551,7 +551,7 @@ void ZCommonRF::XtoRFset(const char* topicOri, JsonObject& RFdata) {
  * inserisci questo gatewayRF in una lista di gatewayRF di cui solo uno sarà attivo alla volta
  */
 void ZCommonRF::addGatewayRF(int gatewayRFId, AbstractGatewayRF* gatewayRF) {
-  gatewayRF->setRFHandler(this);
+  //gatewayRF->setRFHandler(&this);
   gateways[gatewayRFId] = gatewayRF;
 }
 

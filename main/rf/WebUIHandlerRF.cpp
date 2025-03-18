@@ -4,10 +4,10 @@
 
 #  include <ArduinoLog.h>
 
-#  include "../User_config.h"
 #  include "../config_RF.h"
 #  include "../config_WebContent.h"
 #  include "../config_WebUI.h"
+#  include "../main_function.h"
 
 WebUIHandlerRF::WebUIHandlerRF(WebServer& server, ZCommonRF& zCommonRF, JsonArray& modules) : iWebServer(server), iZCommonRF(zCommonRF), iModules(modules) {}
 
@@ -24,10 +24,14 @@ WebUIHandlerRF::WebUIHandlerRF(WebServer& server, ZCommonRF& zCommonRF, JsonArra
 
 void WebUIHandlerRF::handleRF() {
   WEBUI_TRACE_LOG(F("handleRF: uri: %s, args: %d, method: %d" CR), iWebServer.uri(), iWebServer.args(), iWebServer.method());
-  WEBUI_SECURE
+  // WEBUI_SECURE
   bool update = false;
+  /*
   StaticJsonDocument<JSON_MSG_BUFFER> jsonBuffer;
   JsonObject WEBtoRF = jsonBuffer.to<JsonObject>();
+  */
+  JsonBundle jsonBundle;
+  JsonObject WEBtoRF = jsonBundle.body.to<JsonObject>();
 
   if (iWebServer.args()) {
     for (uint8_t i = 0; i < iWebServer.args(); i++) {
@@ -36,9 +40,9 @@ void WebUIHandlerRF::handleRF() {
     if (iWebServer.hasArg("save")) {
       if (iWebServer.hasArg("rf")) {
         String freqStr = iWebServer.arg("rf");
-        RFConfig.frequency = freqStr.toFloat();
-        if (iZCommonRF.validFrequency(RFConfig.frequency)) {
-          WEBtoRF["frequency"] = RFConfig.frequency;
+        ZCommonRF::RFConfig.frequency = freqStr.toFloat();
+        if (iZCommonRF.validFrequency(ZCommonRF::RFConfig.frequency)) {
+          WEBtoRF["frequency"] = ZCommonRF::RFConfig.frequency;
           update = true;
         } else {
           Log.warning(F("[WebUI] Invalid Frequency" CR));
@@ -47,21 +51,21 @@ void WebUIHandlerRF::handleRF() {
       if (iWebServer.hasArg("ar")) {
         int selectedReceiver = iWebServer.arg("ar").toInt();
         if (isValidReceiver(selectedReceiver)) { // Assuming isValidReceiver is a validation function
-          RFConfig.activeReceiver = selectedReceiver;
-          WEBtoRF["activereceiver"] = RFConfig.activeReceiver;
+          ZCommonRF::RFConfig.activeReceiver = selectedReceiver;
+          WEBtoRF["activereceiver"] = ZCommonRF::RFConfig.activeReceiver;
           update = true;
         } else {
           Log.warning(F("[WebUI] Invalid Active Receiver" CR));
         }
       }
       if (iWebServer.hasArg("oo")) {
-        RFConfig.newOokThreshold = iWebServer.arg("oo").toInt();
-        WEBtoRF["ookthreshold"] = RFConfig.newOokThreshold;
+        ZCommonRF::RFConfig.newOokThreshold = iWebServer.arg("oo").toInt();
+        WEBtoRF["ookthreshold"] = ZCommonRF::RFConfig.newOokThreshold;
         update = true;
       }
       if (iWebServer.hasArg("rs")) {
-        RFConfig.rssiThreshold = iWebServer.arg("rs").toInt();
-        WEBtoRF["rssithreshold"] = RFConfig.rssiThreshold;
+        ZCommonRF::RFConfig.rssiThreshold = iWebServer.arg("rs").toInt();
+        WEBtoRF["rssithreshold"] = ZCommonRF::RFConfig.rssiThreshold;
         update = true;
       }
       if (update) {
@@ -74,18 +78,18 @@ void WebUIHandlerRF::handleRF() {
     }
   }
 
-  String activeReceiverHtml = generateActiveReceiverOptions(RFConfig.activeReceiver);
+  String activeReceiverHtml = generateActiveReceiverOptions(ZCommonRF::RFConfig.activeReceiver);
 
   char jsonChar[100];
   serializeJson(iModules, jsonChar, measureJson(iModules) + 1);
   char buffer[WEB_TEMPLATE_BUFFER_MAX_SIZE];
 
-  snprintf(buffer, WEB_TEMPLATE_BUFFER_MAX_SIZE, header_html, (String(gateway_name) + " - Configure RF").c_str());
+  snprintf(buffer, WEB_TEMPLATE_BUFFER_MAX_SIZE, header_html, (String(getGatewayName()) + " - Configure RF").c_str());
   String response = String(buffer);
   response += String(script);
   response += String(style);
 
-  snprintf(buffer, WEB_TEMPLATE_BUFFER_MAX_SIZE, config_rf_body, jsonChar, gateway_name, RFConfig.frequency, activeReceiverHtml.c_str());
+  snprintf(buffer, WEB_TEMPLATE_BUFFER_MAX_SIZE, config_rf_body, jsonChar, getGatewayName(), ZCommonRF::RFConfig.frequency, activeReceiverHtml.c_str());
   response += String(buffer);
   snprintf(buffer, WEB_TEMPLATE_BUFFER_MAX_SIZE, footer, OMG_VERSION);
   response += String(buffer);

@@ -1,3 +1,8 @@
+#ifndef DEFAULT_OTA_CERT_H
+#define DEFAULT_OTA_CERT_H
+
+#include <pgmspace.h>
+
 #include "Arduino.h"
 
 // The certificate must be in PEM ascii format.
@@ -24,3 +29,5 @@ o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU
 rqXRfboQnoZsG4q5WTP468SQvvG5
 -----END CERTIFICATE-----
 ")EOF";
+
+#endif // DEFAULT_OTA_CERT_H

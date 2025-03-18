@@ -7,6 +7,8 @@
 
 class AbstractGatewayRF {
 public:
+  AbstractGatewayRF(ZCommonRF& iZCommonRF) : rfHandler(iZCommonRF) {};
+
   virtual ~AbstractGatewayRF() {};
 
   virtual bool disableReceive() = 0;
@@ -23,12 +25,12 @@ public:
   virtual void XtoRF(const char* topicOri, JsonObject& RFdata) = 0;
 #endif
 
-  void setRFHandler(ZCommonRF* rfHandler) {
+  void setRFHandler(ZCommonRF& rfHandler) {
     this->rfHandler = rfHandler;
   }
 
 protected:
-  ZCommonRF* rfHandler;
+  ZCommonRF& rfHandler;
 };
 
 #endif // IGATEWAYRF_H

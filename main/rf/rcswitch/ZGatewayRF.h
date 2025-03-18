@@ -40,7 +40,7 @@
 
 class ZGatewayRF : public AbstractGatewayRF {
 public:
-  ZGatewayRF();
+  ZGatewayRF(ZCommonRF& iZCommonRF);
 
   bool disableReceive();
 

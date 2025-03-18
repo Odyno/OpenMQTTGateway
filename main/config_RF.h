@@ -195,21 +195,12 @@ const char parameters[51][4][24] = {
  * 4 = ZgatewayRF2
  */
 
-struct RFConfig_s {
-  float frequency;
-  int rssiThreshold;
-  int newOokThreshold;
-  int activeReceiver;
-};
-
 #define ACTIVE_NONE     -1
 #define ACTIVE_RECERROR 0
 #define ACTIVE_PILIGHT  1
 #define ACTIVE_RF       2
 #define ACTIVE_RTL      3
 #define ACTIVE_RF2      4
-
-RFConfig_s RFConfig;
 
 /*-------------------CC1101 DefaultTXPower----------------------*/
 //Adjust the default TX-Power for sending radio if ZradioCC1101 is used.

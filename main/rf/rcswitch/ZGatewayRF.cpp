@@ -39,7 +39,7 @@
 #    include <ELECHOUSE_CC1101_SRC_DRV.h>
 #  endif
 
-ZGatewayRF::ZGatewayRF() {
+ZGatewayRF::ZGatewayRF(ZCommonRF& iZCommonRF) : AbstractGatewayRF(iZCommonRF) {
   // Constructor implementation
   // Initialize any necessary variables or configurations here
   mySwitch = RCSwitch();
@@ -346,7 +346,7 @@ void ZGatewayRF::XtoRF(const char* topicOri, JsonObject& RFdata) {
       int valueBITS = RFdata["length"] | 24;
       int valueRPT = RFdata["repeat"] | RF_EMITTER_REPEAT;
       Log.notice(F("[RF] Protocol:%d, Pulse Lgth: %d, Bits nb: %d" CR), valuePRT, valuePLSL, valueBITS);
-      rfHandler->disableCurrentReceiver();
+      rfHandler.disableCurrentReceiver();
 #    ifdef ZradioCC1101
       initCC1101();
       int txPower = RFdata["txpower"] | RF_CC1101_TXPOWER;
@@ -367,7 +367,7 @@ void ZGatewayRF::XtoRF(const char* topicOri, JsonObject& RFdata) {
       mySwitch.setRepeatTransmit(RF_EMITTER_REPEAT); // Restore the default value
     }
 
-    rfHandler->enableActiveReceiver();
+    rfHandler.enableActiveReceiver();
   }
 }
 #  endif
@@ -401,7 +401,7 @@ void ZGatewayRF::disableRFReceive() {
  * @note If RF_DISABLE_TRANSMIT is defined, the RF transmitter will be disabled.
  */
 void ZGatewayRF::enableRFReceive(
-    float rfFrequency = RFConfig.frequency,
+    float rfFrequency = ZCommonRF::RFConfig.frequency,
     int rfReceiverGPIO = RF_RECEIVER_GPIO,
     int rfEmitterGPIO = RF_EMITTER_GPIO) {
   Log.notice(F("[RF] Enable RF Receiver: %fMhz, RF_EMITTER_GPIO: %d, RF_RECEIVER_GPIO: %d" CR), rfFrequency, rfEmitterGPIO, rfReceiverGPIO);
@@ -415,7 +415,7 @@ void ZGatewayRF::enableRFReceive(
   mySwitch.setRepeatTransmit(rfEmitterGPIO);
   mySwitch.enableReceive(rfReceiverGPIO);
 
-  Log.trace(F("[RF] Setup command topic: %s%s%s\n Setup done" CR), (const char*)mqtt_topic, (const char*)gateway_name, (const char*)subjectMQTTtoRF);
+  Log.trace(F("[RF] Setup command topic: %s%s%s\n Setup done" CR), (const char*)mqtt_topic, (const char*)subjectMQTTtoRF);
 }
 
 bool ZGatewayRF::enableReceive() {

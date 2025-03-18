@@ -96,10 +96,6 @@ bool ready_to_sleep = false;
 
 LEDManager ledManager;
 
-struct JsonBundle {
-  StaticJsonDocument<JSON_MSG_BUFFER> doc;
-};
-
 std::queue<std::string> jsonQueue;
 
 #ifdef ESP32
@@ -339,7 +335,7 @@ WebUIHandlerRF iWebUIHandlerRF(server, iZCommonRF, modules);
 
 #  ifdef ZgatewayRF
 #    include "rf/rcswitch/ZGatewayRF.h"
-ZGatewayRF iZGatewayRF;
+ZGatewayRF iZGatewayRF(iZCommonRF);
 #  endif
 #endif
 
@@ -355,6 +351,13 @@ std::unique_ptr<PicoMQTT::Client> mqtt;
 ---------------------  Start Function Definitions
 */
 #include "main_function.h"
+
+/**
+ * questi due paramentri  sono praticamente presenti ovunque
+ */
+const char* getGatewayName() {
+  return gateway_name;
+}
 
 template <typename T>
 void Config_update(JsonObject& data, const char* key, T& var);

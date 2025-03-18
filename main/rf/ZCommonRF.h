@@ -28,6 +28,13 @@
 
 #if defined(ZgatewayRF) || defined(ZgatewayPilight) || defined(ZgatewayRTL_433) || defined(ZgatewayRF2) || defined(ZactuatorSomfy)
 
+struct RFConfig_s {
+  float frequency;
+  int rssiThreshold;
+  int newOokThreshold;
+  int activeReceiver;
+};
+
 #  ifdef ZradioCC1101
 #    include <ELECHOUSE_CC1101_SRC_DRV.h>
 #  endif
@@ -193,6 +200,10 @@ public:
   AbstractGatewayRF* getGatewayRF(int gatewayRFId);
 
   AbstractGatewayRF* getCurrentGatewayRF();
+  /**
+   * Configuration of RF
+   */
+  static RFConfig_s RFConfig;
 
 private:
   std::unordered_map<int, AbstractGatewayRF*> gateways;

@@ -31,6 +31,10 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
+struct JsonBundle {
+  StaticJsonDocument<JSON_MSG_BUFFER> body;
+};
+
 void handle_autodiscovery();
 
 bool enqueueJsonObject(const StaticJsonDocument<JSON_MSG_BUFFER>& jsonDoc);
@@ -41,5 +45,7 @@ void Config_update(JsonObject& data, const char* key, T& var);
 bool cmpToMainTopic(const char* topicOri, const char* toAdd);
 
 void setupTLS(int index = CNT_DEFAULT_INDEX);
+
+const char* getGatewayName();
 
 #endif // MAIN_FUNCTION_H
