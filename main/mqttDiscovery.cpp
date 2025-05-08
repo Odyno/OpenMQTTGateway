@@ -26,7 +26,11 @@
 
 #include "User_config.h"
 
-#ifdef ZmqttDiscovery
+#if !defined(ZmqttDiscovery) && !defined(ZmqttDiscovery2)
+void pubMqttDiscovery() {}
+#endif
+
+#ifdef ZmqttDiscovery && !defined(ZmqttDiscovery2)
 #  include "TheengsCommon.h"
 
 #  ifdef ESP8266
@@ -599,7 +603,7 @@ void createDiscovery(const char* sensor_type,
     }
   }
 
-  if (diagnostic_entity) {  // entity_category
+  if (diagnostic_entity) { // entity_category
     sensor["ent_cat"] = "diagnostic";
   }
 
@@ -1150,6 +1154,4 @@ void pubMqttDiscovery() {
 #    endif
 #  endif
 }
-#else
-void pubMqttDiscovery() {}
 #endif

@@ -7,6 +7,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        mqttDiscovery2:
+          - enabled
+          - disabled
         environments:
           - "rfbridge"
           - "rfbridge-direct"
@@ -103,12 +106,17 @@ jobs:
         run: |
           ESP32_VERSION=$(grep 'esp32_platform\s*=' platformio.ini | cut -d'@' -f2 | tr -d '[:space:]')
           echo "ESP32_PLATFORM_VERSION=${ESP32_VERSION}" >> $GITHUB_ENV
+      - name: Set build flags for mqttDiscovery2
+        run: |
+          if [ "${{ matrix.mqttDiscovery2 }}" = "enabled" ]; then
+            echo "PLATFORMIO_BUILD_FLAGS=-DZmqttDiscovery2=true" >> $GITHUB_ENV
+          fi
       - name: Run PlatformIO
         run: platformio run -e ${{ matrix.environments }}
       - name: Upload Assets
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.environments }}
+          name: ${{ matrix.environments }}_ZMqttDiscovery2-${{ matrix.mqttDiscovery2 }}
           path: |
             .pio/build/*/firmware.bin
             .pio/build/*/partitions.bin
