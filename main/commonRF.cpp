@@ -58,7 +58,13 @@ public:
 };
 
 ZCommonRFWrapper iRFReceiver;
-RFConfiguration iRFConfig(iRFReceiver);
+#  ifdef ESP32
+#    include "NVSPreferencesStorage.h"
+NVSPreferencesStorage rfStorage;
+RFConfiguration iRFConfig(iRFReceiver, &rfStorage);
+#  else
+RFConfiguration iRFConfig(iRFReceiver, nullptr);
+#  endif
 
 //TODO review
 void initCC1101() {

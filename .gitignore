@@ -18,7 +18,41 @@ __pycache__
 *.pem
 managed_components
 
-
+#
+# AI Agent Configuration
+#
 .github/chatmodes
 .github/prompts
 .github/*instructions.md
+
+#
+# Test build artifacts
+#
+.pio/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+# Test coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage.info
+coverage/
+htmlcov/
+
+# Test result files
+test_results.xml
+test_report.html
+*.log
+
+# Temporary test files
+temp_*
+tmp_*
+.tmp/
+
+# IDE specific test files
+.vscode/settings.json
+*.workspace

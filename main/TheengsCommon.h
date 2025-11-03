@@ -5,7 +5,6 @@
 #define ARDUINOJSON_USE_LONG_LONG     1
 #define ARDUINOJSON_ENABLE_STD_STRING 1
 #include <ArduinoJson.h>
-#include <ArduinoLog.h>
 
 #if defined(ESP32)
 #  include <Preferences.h>

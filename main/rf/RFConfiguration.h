@@ -2,13 +2,14 @@
 #define RFCONFIG_H
 #pragma once
 
-#include <TheengsCommon.h>
+#include <ArduinoJson.h>
 #include <rf/RFReceiver.h>
+#include <storage/IStorage.h>
 
 class RFConfiguration {
 public:
   // Constructor
-  RFConfiguration(RFReceiver& receiver);
+  RFConfiguration(RFReceiver& receiver, IStorage* storage = nullptr);
   ~RFConfiguration();
 
   // Getters and Setters
@@ -106,9 +107,12 @@ public:
    */
   bool validFrequency(float mhz);
 
-private:
+  template <typename T>
+  static void update(JsonObject& data, const char* key, T& var);
+
   // Reference to the RFReceiver object
   RFReceiver& iRFReceiver;
+  IStorage* storage;
   float frequency;
   int rssiThreshold;
   int newOokThreshold;
