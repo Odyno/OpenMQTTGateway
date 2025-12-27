@@ -33,6 +33,11 @@ on:
         required: false
         type: boolean
         default: false
+      environment-set:
+        description: 'Which set of environments to build (all, ci)'
+        required: false
+        type: string
+        default: 'all'
 
 jobs:
   load-environments:
@@ -43,7 +48,12 @@ jobs:
       - uses: actions/checkout@v4
       - id: set-matrix
         run: |
-          ENVIRONMENTS=$(jq -c '.environments.all' .github/workflows/environments.json)
+          ENV_SET="${{ inputs.environment-set }}"
+          if [ "$ENV_SET" = "ci" ]; then
+            ENVIRONMENTS=$(jq -c '.environments.ci' .github/workflows/environments.json)
+          else
+            ENVIRONMENTS=$(jq -c '.environments.all' .github/workflows/environments.json)
+          fi
           echo "matrix=${ENVIRONMENTS}" >> $GITHUB_OUTPUT
 
   build:

@@ -54,7 +54,7 @@ jobs:
       # GitHub-specific: Upload to Security tab
       - name: Upload to GitHub Security tab
         if: inputs.upload-to-security-tab == true && always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-security-scan'
@@ -99,10 +99,30 @@ jobs:
             # Group by severity
             CRITICAL=$(jq '[.runs[].results[] | select(.level == "error")] | length' trivy-results.sarif 2>/dev/null || echo "0")
             HIGH=$(jq '[.runs[].results[] | select(.level == "warning")] | length' trivy-results.sarif 2>/dev/null || echo "0")
+            MEDIUM=$(jq '[.runs[].results[] | select(.level == "note")] | length' trivy-results.sarif 2>/dev/null || echo "0")
+            LOW=$(jq '[.runs[].results[] | select(.level == "none")] | length' trivy-results.sarif 2>/dev/null || echo "0")
             
             echo "- 🔴 Critical: ${CRITICAL}" >> security-summary.md
             echo "- 🟠 High: ${HIGH}" >> security-summary.md
+            echo "- 🟡 Medium: ${MEDIUM}" >> security-summary.md
+            echo "- 🟢 Low: ${LOW}" >> security-summary.md
             echo "" >> security-summary.md
+            
+            # List all vulnerabilities
+            if [ "$VULN_COUNT" -gt 0 ]; then
+              echo "## Vulnerability Details" >> security-summary.md
+              echo "" >> security-summary.md
+              
+              # Extract and format vulnerabilities from SARIF
+              jq -r '.runs[].results[] | 
+                "### " + (.level | ascii_upcase) + ": " + .ruleId + "\n" +
+                "**Location**: " + (.locations[0].physicalLocation.artifactLocation.uri // "N/A") + "\n" +
+                "**Message**: " + .message.text + "\n" +
+                (if .properties.CVE then "**CVE**: " + .properties.CVE + "\n" else "" end) +
+                (if .properties.cvss then "**CVSS Score**: " + (.properties.cvss | tostring) + "\n" else "" end) +
+                ""
+              ' trivy-results.sarif >> security-summary.md 2>/dev/null || echo "Could not parse vulnerability details" >> security-summary.md
+            fi
           fi
           
           echo "## Report Formats Available" >> security-summary.md
