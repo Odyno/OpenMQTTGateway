@@ -39,6 +39,7 @@ jobs:
       artifact-retention-days: 90
       artifact-name-prefix: 'firmware-'
       prepare-for-deploy: true
+      environment-set: 'all'
 
   deploy:
     needs: [prepare, build]

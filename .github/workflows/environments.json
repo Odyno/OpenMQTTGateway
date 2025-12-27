@@ -88,8 +88,26 @@
             "sonoff-basic",
             "sonoff-basic-rfr3"
         ],
+        "ci": [
+            "esp32dev-all-test",
+            "esp32dev-ble",
+            "esp32dev-ir",
+            "esp32dev-rf",
+            "esp32dev-rtl_433",
+            "esp32s3-dev-c1-ble",
+            "esp32c3-dev-m1-ble",
+            "heltec-ble",
+            "lilygo-ble",
+            "nodemcuv2-all-test",
+            "nodemcuv2-ir",
+            "nodemcuv2-rf",
+            "theengs-bridge",
+            "theengs-plug",
+            "rfbridge"
+        ],
         "metadata": {
             "totalCount": 83,
+            "ciCount": 15,
             "categories": {
                 "esp32": 42,
                 "esp8266": 17,

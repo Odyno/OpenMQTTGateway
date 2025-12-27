@@ -3,7 +3,28 @@ name: Build
 on: [push, pull_request]
 
 jobs:
+  determine-build-scope:
+    runs-on: ubuntu-latest
+    outputs:
+      environment-set: ${{ steps.decide.outputs.environment-set }}
+    steps:
+      - id: decide
+        run: |
+          # Full build for: development, master, edge, stable, release/*, hotfix/*, and all PRs
+          if [[ "${{ github.event_name }}" == "pull_request" ]] || \
+             [[ "${{ github.ref }}" == "refs/heads/development" ]] || \
+             [[ "${{ github.ref }}" == "refs/heads/master" ]] || \
+             [[ "${{ github.ref }}" == "refs/heads/edge" ]] || \
+             [[ "${{ github.ref }}" == "refs/heads/stable" ]] || \
+             [[ "${{ github.ref }}" == refs/heads/release/* ]] || \
+             [[ "${{ github.ref }}" == refs/heads/hotfix/* ]]; then
+            echo "environment-set=all" >> $GITHUB_OUTPUT
+          else
+            echo "environment-set=ci" >> $GITHUB_OUTPUT
+          fi
+
   build:
+    needs: determine-build-scope
     name: Build firmware
     uses: ./.github/workflows/task-build.yml
     with:
@@ -11,6 +32,7 @@ jobs:
       enable-dev-ota: false
       artifact-retention-days: 7
       prepare-for-deploy: false
+      environment-set: ${{ needs.determine-build-scope.outputs.environment-set }}
 
   documentation:
     name: Build documentation
