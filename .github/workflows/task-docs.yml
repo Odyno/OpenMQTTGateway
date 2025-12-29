@@ -3,61 +3,44 @@ name: Reusable Documentation Workflow
 on:
   workflow_call:
     inputs:
-      python-version:
-        description: 'Python version to use'
+      mode:
+        description: 'Build mode: "prod" or "dev"'
         required: false
         type: string
-        default: '3.11'
-      node-version:
-        description: 'Node.js version to use'
+        default: "prod"
+      version:
+        description: 'Version string for documentation (use "auto" for automatic detection)'
         required: false
         type: string
-        default: '14.x'
-      version-source:
-        description: 'Source of version: "release" (from GitHub release) or "custom" (provided)'
+        default: "auto"
+      url-prefix:
+        description: 'URL prefix for docs (e.g., "/" for prod, "/dev/" for dev)'
         required: false
         type: string
-        default: 'release'
-      custom-version:
-        description: 'Custom version string when version-source is "custom"'
-        required: false
-        type: string
-        default: ''
-      base-path:
-        description: 'Base path for documentation (e.g., "/" for prod, "/dev/" for dev)'
-        required: false
-        type: string
-        default: '/'
-      destination-dir:
-        description: 'Destination directory for GitHub Pages deployment'
-        required: false
-        type: string
-        default: '.'
-      generate-webuploader:
-        description: 'Generate WebUploader manifest'
-        required: false
-        type: boolean
-        default: true
-      webuploader-args:
-        description: 'Additional arguments for gen_wu.py script'
-        required: false
-        type: string
-        default: ''
+        default: "/"
       run-pagespeed:
-        description: 'Run PageSpeed Insights after deployment'
+        description: "Run PageSpeed Insights after deploy"
         required: false
         type: boolean
         default: false
       pagespeed-url:
-        description: 'URL to test with PageSpeed Insights'
+        description: "URL to test with PageSpeed"
         required: false
         type: string
-        default: 'https://docs.openmqttgateway.com/'
-    secrets:
-      GITHUB_TOKEN:
-        required: true
-      APIKEY:
+        default: "https://docs.openmqttgateway.com/"
+      destination-dir:
+        description: "GitHub Pages destination directory"
         required: false
+        type: string
+        default: "."
+      github-token:
+        description: "GitHub token for deploying to GitHub Pages"
+        required: true
+        type: string
+      pagespeed-url-apikey:
+        description: "API key for PageSpeed Insights"
+        required: false
+        type: string
 
 jobs:
   documentation:
@@ -65,78 +48,60 @@ jobs:
     name: Create and deploy documentation
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: ${{ inputs.node-version }}
+          fetch-depth: 0 # Fetch all history for git tags
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ inputs.python-version }}
-
-      - name: Install Python dependencies
+      - name: Determine version
+        id: version
         run: |
-          python -m pip install --upgrade pip
-          pip install requests pandas markdown pytablereader tabulate
+          VERSION="${{ inputs.version }}"
+          MODE="${{ inputs.mode }}"
 
-      - name: Install Node dependencies
-        run: npm install
+          # If version is 'auto', determine it based on mode
+          if [ "$VERSION" = "auto" ]; then
+            if [ "$MODE" = "dev" ]; then
+              # Dev mode: always use short SHA
+              VERSION="$(git rev-parse --short HEAD)"
+              echo "Dev mode - using SHA: $VERSION"
+            else
+              # Prod mode: try to get git tag
+              if GIT_TAG=$(git describe --tags --exact-match 2>/dev/null); then
+                VERSION="$GIT_TAG"
+                echo "Using exact git tag: $VERSION"
+              elif LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null); then
+                VERSION="$LATEST_TAG"
+                echo "Using latest tag: $VERSION"
+              else
+                VERSION="v0.0.0-unknown"
+                echo "Warning: No tag found, using: $VERSION"
+              fi
+            fi
+          fi
 
-      - name: Download Common Config
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Final version: $VERSION"
+
+      - name: Build documentation site
         run: |
-          curl -o docs/.vuepress/public/commonConfig.js https://www.theengs.io/commonConfig.js
-
-      - name: Get latest release tag
-        if: inputs.version-source == 'release'
-        id: last_release
-        uses: InsonusK/get-latest-release@v1.0.1
-        with:
-          myToken: ${{ secrets.GITHUB_TOKEN }}
-          view_top: 1
-
-      - name: Set version tag from release
-        if: inputs.version-source == 'release'
-        run: |
-          VERSION="${{ steps.last_release.outputs.tag_name }}"
-          sed -i "s/version_tag/${VERSION}/g" docs/.vuepress/config.js scripts/latest_version.json
-
-      - name: Set custom version tag
-        if: inputs.version-source == 'custom' && inputs.custom-version != ''
-        run: |
-          sed -i "s/version_tag/${{ inputs.custom-version }}/g" docs/.vuepress/config.js scripts/latest_version_dev.json
-
-      - name: Set base path
-        if: inputs.base-path != '/'
-        run: |
-          sed -i "s|base: '/'|base: '${{ inputs.base-path }}'|g" docs/.vuepress/config.js
-
-      - name: Generate board documentation
-        run: |
-          python ./scripts/generate_board_docs.py
-
-      - name: Generate WebUploader manifest
-        if: inputs.generate-webuploader
-        run: |
-          python ./scripts/gen_wu.py ${{ inputs.webuploader-args }}
-
-      - name: Build documentation
-        run: npm run docs:build
+          ./scripts/ci.sh site \
+            --clean \
+            --mode ${{ inputs.mode }} \
+            --version ${{ steps.version.outputs.version }} \
+            --url-prefix ${{ inputs.url-prefix }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/.vuepress/dist
+          github_token: ${{ inputs.github-token }}
+          publish_dir: ./generated/site
           destination_dir: ${{ inputs.destination-dir }}
           cname: docs.openmqttgateway.com
 
       - name: Run PageSpeed Insights
-        if: inputs.run-pagespeed && secrets.APIKEY != ''
+        if: inputs.run-pagespeed == true
         uses: jakepartusch/psi-action@v1.3
         id: psi
         with:
           url: ${{ inputs.pagespeed-url }}
           threshold: 60
-          key: ${{ secrets.APIKEY }}
+          key: ${{ inputs.pagespeed-url-apikey }}
