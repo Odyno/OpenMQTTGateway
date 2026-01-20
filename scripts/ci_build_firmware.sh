@@ -43,21 +43,7 @@ validate_environment() {
     log_info "Building environment: $env"
 }
 
-# Function to setup build environment variables
-setup_build_env() {
-    local enable_dev_ota="${1:-false}"
-    local version="${2:-edge}"
-    
-    export PYTHONIOENCODING=utf-8
-    export PYTHONUTF8=1
-    export OMG_VERSION="$version"
-    
-    
-    if [[ "$enable_dev_ota" == "true" ]]; then
-        export PLATFORMIO_BUILD_FLAGS='"-DDEVELOPMENTOTA=true"'
-        log_info "Development OTA enabled"
-    fi
-}
+
 
 # Function to check PlatformIO availability
 check_platformio() {
@@ -83,6 +69,18 @@ run_build() {
     local env="$1"
     local clean="${2:-false}"
     local verbose="${3:-false}"
+    local enable_dev_ota="${4:-false}"
+    local version="${5:-edge}"
+
+    if [[ "$enable_dev_ota" == "true" ]]; then
+        log_info "Development OTA enabled"
+         export PLATFORMIO_BUILD_FLAGS='"-DDEVELOPMENTOTA=true"'
+    fi
+
+    if [[ -n "$version" ]]; then
+        log_info "Setting firmware version to: $version"
+        export PLATFORMIO_BUILD_FLAGS="${PLATFORMIO_BUILD_FLAGS} -DOMG_VERSION=\\\"${version}\\\""
+    fi
     
     log_build "Starting build for environment: $env"
     
@@ -99,6 +97,9 @@ run_build() {
     # Execute build with timing
     local start_time
     start_time=$(date +%s)
+    
+    log_info  "PlatformIO Build Flags: $PLATFORMIO_BUILD_FLAGS"
+    log_info "Executing: $build_cmd"
     
     if eval "$build_cmd"; then
         local end_time
@@ -189,6 +190,7 @@ Options:
     --clean         Clean build artifacts before building
     --verbose       Enable verbose build output
     --no-verify     Skip artifact verification
+    --version <ver> Set firmware version (default: edge)
     --help          Show this help message
 
 Examples:
@@ -264,7 +266,8 @@ main() {
     validate_environment "$environment" || exit 1
     
     # Setup build environment
-    setup_build_env "$enable_dev_ota" "$version"
+    export PYTHONIOENCODING=utf-8
+    export PYTHONUTF8=1
     
     # Clean if requested
     if [[ "$clean_build_flag" == "true" ]]; then
@@ -272,7 +275,7 @@ main() {
     fi
     
     # Run build
-    run_build "$environment" "$clean_build_flag" "$verbose" || exit 1
+    run_build "$environment" "$clean_build_flag" "$verbose" "$enable_dev_ota" "$version" || exit 1
     
     # Verify artifacts
     if [[ "$verify" == "true" ]]; then

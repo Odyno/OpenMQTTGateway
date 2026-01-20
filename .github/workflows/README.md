@@ -216,8 +216,6 @@ GitHub Action (task-*.yml)
 ./scripts/ci_*.sh / *.py             ← Worker scripts
 ```
 
-
-
 ---
 
 ## Detailed Workflow Documentation

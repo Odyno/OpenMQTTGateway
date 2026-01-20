@@ -29,22 +29,15 @@ jobs:
 
   handle-documentation:
     needs: [prepare, handle-firmwares]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all firmware artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: "*"
-          path: generated/artifacts
-          merge-multiple: true
-      - name: Build and deploy development documentation
-        uses: ./.github/workflows/task-docs.yml
-        with:
-          mode: "dev"
-          version: ${{ needs.prepare.outputs.short-sha }}
-          url-prefix: "/dev/"
-          destination-dir: "dev"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-pagespeed: true
-          pagespeed-url: 'https://docs.openmqttgateway.com/dev/'
-          pagespeed-url-apikey: ${{ secrets.APIKEY }}
+    name: Build and deploy development documentation
+    uses: ./.github/workflows/task-docs.yml
+    with:
+      mode: "dev"
+      version: ${{ needs.prepare.outputs.short-sha }}
+      url-prefix: "/dev/"
+      destination-dir: "dev"
+      run-pagespeed: true
+      pagespeed-url: 'https://docs.openmqttgateway.com/dev/'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      pagespeed-apikey: ${{ secrets.APIKEY }}

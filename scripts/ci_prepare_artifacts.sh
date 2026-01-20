@@ -209,10 +209,14 @@ main() {
                 output_dir="$2"
                 shift 2
                 ;;
-            #--version)
-            #    #version="$2"
-            #    shift 2
-            #    ;;
+            -v|--version)
+                if [[ -z "${2:-}" ]]; then
+                    log_error "-v|--version requires a version string"
+                    return 1
+                fi
+                #version="$2"
+                shift 2
+                ;;
             --clean)
                 clean_flag=true
                 shift
