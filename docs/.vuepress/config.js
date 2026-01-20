@@ -22,15 +22,12 @@ module.exports = {
   base: meta.url_prefix,
   dest: meta.dest, // default is generated/site
   description: 'One gateway, many technologies: MQTT gateway for ESP8266 or ESP32 with bidirectional 433mhz/315mhz/868mhz, Infrared communications, BLE, LoRa, beacons detection, mi flora / mi jia / LYWSD02/ Mi Scale compatibility, SMS & LORA.',
-  head: [
-    ...commonConfig.head,
-    ['script', { type: 'module', src: meta.url_script_webuploader }]
-  ],
+  head: [...commonConfig.head],
   themeConfig: {
+    ...commonConfig.themeConfig,
     repo: meta.theme_config_repo,
     docsDir: 'docs',
     mode: meta.mode,
-    ...commonConfig.themeConfig,
     sidebar: [
       ['/', '0 - What is it for 🏠'],
       {
@@ -39,7 +36,7 @@ module.exports = {
         sidebarDepth: 1,    // optional, defaults to 1
         children: [
           'prerequisites/devices',
-          'prerequisites/board-full',
+          'prerequisites/board',
           'prerequisites/parts',
           'prerequisites/broker',
           'prerequisites/controller']
@@ -60,9 +57,10 @@ module.exports = {
       },
       {
         title: '3 - Upload ➡️',   // required
+        path: '/upload/',
         sidebarDepth: 1,    // optional, defaults to 1
         children: [
-          'upload/web-install-full',
+          ['upload/web-install', "(Option 1) Upload from the web"],
           'upload/binaries',
           'upload/builds',
           'upload/gitpod',

@@ -25,11 +25,10 @@ managed_components
 .github/workflows/_docs
 # CI/CD Generated outputs
 docs/.vuepress/dist/
-docs/.vuepress/components/
-docs/.vuepress/public/
-^docs/.vuepress/public/img/
-^docs/.vuepress/public/*.png
-^docs/.vuepress/public/*.txt
+docs/.vuepress/public/boards-info.json
+docs/.vuepress/public/commonConfig.js 
+docs/.vuepress/public/firmware_build
+
 
 # Generated site/firmware/reports files
 generated/

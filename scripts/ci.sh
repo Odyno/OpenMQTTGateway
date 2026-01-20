@@ -101,6 +101,8 @@ run_all_pipeline() {
     local mode=""
     local preview=false
     local env_override=""
+    local version=""
+    local do_clean=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -117,6 +119,10 @@ run_all_pipeline() {
                 fi
                 shift 2
                 ;;
+            --clean)
+                do_clean=true
+                shift
+                ;;
             --preview)
                 preview=true
                 shift
@@ -127,6 +133,14 @@ run_all_pipeline() {
                     return 1
                 fi
                 env_override="$2"
+                shift 2
+                ;;
+            -v|--version)
+                if [[ -z "${2:-}" ]]; then
+                    log_error "-v|--version requires a version string"
+                    return 1
+                fi
+                version="$2"
                 shift 2
                 ;;
             --help|-h)
@@ -156,6 +170,7 @@ run_all_pipeline() {
 
     # Step 1: Quality Assurance
     log_info "═══ Step 1/3: Quality Assurance ═══"
+    log_info "RUN: ---> ${SCRIPT_DIR}/ci_qa.sh --check"
     if ! "${SCRIPT_DIR}/ci_qa.sh" --check; then
         log_error "QA checks failed. Pipeline aborted."
         return 1
@@ -184,13 +199,25 @@ run_all_pipeline() {
     
     local build_count=0
     local failed_builds=()
-    
+    local build_args=()
+
+    if [[ -n "$version" ]]; then
+        build_args+=("--version" "$version")
+        log_info "Using version override: $version"
+    fi
+    build_args+=("--mode" "$mode")
+    build_args+=("--deploy-ready")
+    if [[ "$do_clean" == true ]]; then
+        build_args+=("--clean")
+    fi
+
     for env in "${environments[@]}"; do
         ((++build_count))
         log_info "[$build_count/${#environments[@]}] Building: $env"
         
         set +e
-        "${SCRIPT_DIR}/ci_build.sh" "$env" --mode "$mode" --deploy-ready
+        log_info "RUN: ---> ${SCRIPT_DIR}/ci_build.sh" "$env" "${build_args[@]}"
+        "${SCRIPT_DIR}/ci_build.sh" "$env" "${build_args[@]}"
         local rc=$?
         set -e
         if [[ $rc -ne 0 ]]; then
@@ -215,6 +242,14 @@ run_all_pipeline() {
     if [[ "$preview" == true ]]; then
         site_args+=("--preview")
     fi
+    if [[ -n "$version" ]]; then
+        site_args+=("--version" "$version")
+    fi
+    if [[ "$do_clean" == true ]]; then
+        site_args+=("--clean")
+    fi
+    
+    log_info "RUN: --->${SCRIPT_DIR}/ci_site.sh" "${site_args[@]}"
     if ! "${SCRIPT_DIR}/ci_site.sh" "${site_args[@]}"; then
         log_warn "Site build failed, but continuing..."
     fi

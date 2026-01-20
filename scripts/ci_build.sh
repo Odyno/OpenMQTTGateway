@@ -308,6 +308,7 @@ main() {
     [[ "$mode" == "dev" ]] && build_opts+=(--dev-ota)
     [[ "$clean" == "true" ]] && build_opts+=(--clean)
     [[ "$verbose" == "true" ]] && build_opts+=(--verbose)
+    [[ "$set_version" == "true" ]] && build_opts+=(--version "$version")
     
     "${SCRIPT_DIR}/ci_build_firmware.sh" "$environment" "${build_opts[@]}" || exit 1
     echo ""
@@ -323,6 +324,27 @@ main() {
         [[ "$set_version" == "true" ]] && artifact_opts+=(--version "$version")
         "${SCRIPT_DIR}/ci_prepare_artifacts.sh" "$environment" "${artifact_opts[@]}" || exit 1
         echo ""
+        # Check if site folder exists and copy built files to avoid rebuilding the site
+        if [[ "$mode" == "dev" ]]; then
+            local site_dir="${PROJECT_ROOT}/generated/site/dev"
+            local artifacts_dir="${output_dir:-${PROJECT_ROOT}/generated/artifacts/firmware_build}"
+            
+            if [[ -d "$site_dir" ]]; then
+                log_info "Site folder exists, copying built firmware files to site/dev..."
+                
+                # Copy firmware files for the current environment
+                for file in "${artifacts_dir}/${environment}"-*.bin "${artifacts_dir}/${environment}"-*.tgz; do
+                    if [[ -f "$file" ]]; then
+                        cp -v "$file" "$site_dir/" || log_warn "Failed to copy $(basename "$file")"
+                    fi
+                done
+                
+                log_info "✓ Firmware files copied to site/dev (no site rebuild needed)"
+            else
+                log_warn "Site folder not found at: $site_dir"
+                log_info "Run 'ci.sh site ' to generate it"
+            fi
+        fi
     fi
     
     # Print summary
