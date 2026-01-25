@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: "auto"
+      just-check:
+        description: "Just create a quick build to check for errors"
+        required: false
+        type: boolean
+        default: false
       url-prefix:
         description: 'URL prefix for docs (e.g., "/" for prod, "/dev/" for dev)'
         required: false
@@ -33,14 +38,24 @@ on:
         required: false
         type: string
         default: "."
-      github-token:
-        description: "GitHub token for deploying to GitHub Pages"
-        required: true
-        type: string
-      pagespeed-url-apikey:
-        description: "API key for PageSpeed Insights"
+      python-version:
+        description: "Python version to use"
         required: false
         type: string
+        default: "3.13"
+      pio-version:
+        description: "PlatformIO version to use"
+        required: false
+        type: string
+        default: "v6.1.18"
+    secrets:
+      github-token:
+        description: "GitHub token for deploying to GitHub Pages"
+        required: false
+      pagespeed-apikey:
+        description: "API key for PageSpeed Insights"
+        required: false
+
 
 jobs:
   documentation:
@@ -50,6 +65,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch all history for git tags
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: false
+
+      - name: Install PlatformIO dependencies
+        run: |
+          uv pip install --system -U https://github.com/pioarduino/platformio-core/archive/refs/tags/${{ inputs.pio-version }}.zip
 
       - name: Determine version
         id: version
@@ -81,6 +111,14 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Final version: $VERSION"
 
+      - name: Download all firmware artifacts
+        if: ${{ inputs.mode == 'dev' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*"
+          path: generated/artifacts
+          merge-multiple: true
+
       - name: Build documentation site
         run: |
           ./scripts/ci.sh site \
@@ -91,17 +129,18 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
+        if: ${{ inputs.just-check == false }}
         with:
-          github_token: ${{ inputs.github-token }}
+          github_token: ${{ secrets.github-token }}
           publish_dir: ./generated/site
           destination_dir: ${{ inputs.destination-dir }}
           cname: docs.openmqttgateway.com
 
       - name: Run PageSpeed Insights
-        if: inputs.run-pagespeed == true
+        if: ${{ inputs.just-check == false && inputs.run-pagespeed == true }}
         uses: jakepartusch/psi-action@v1.3
         id: psi
         with:
           url: ${{ inputs.pagespeed-url }}
           threshold: 60
-          key: ${{ inputs.pagespeed-url-apikey }}
+          key: ${{ secrets.pagespeed-apikey }}

@@ -39,27 +39,9 @@ jobs:
   documentation:
     needs: build
     name: Build documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all firmware artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: "*"
-          path: generated/artifacts
-          merge-multiple: true
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "14.x"
-
-      - name: Install docs dependencies
-        run: npm install
-
-      - name: Build documentation with ci_site.sh 
-
-        run: |
-          # Quick build check (dev mode) not used task-docs.yml because is not required the upload of artefacts
-          ./scripts/ci.sh site --mode dev 
+    uses: ./.github/workflows/task-docs.yml
+    with:
+      mode: "dev"
+      run-pagespeed: false
+      just-check: true
+      

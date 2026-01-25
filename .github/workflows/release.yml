@@ -59,17 +59,12 @@ jobs:
 
   documentation:
     needs: [prepare, deploy]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all firmware artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: "*"
-      - name: Build and deploy release documentation
-        uses: ./.github/workflows/task-docs.yml
-        with:
-          mode: "prod"
-          version: ${{ needs.prepare.outputs.version-tag }}
-          url-prefix: "/"
-          destination-dir: "."
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+    name: Build and deploy release documentation
+    uses: ./.github/workflows/task-docs.yml
+    with:
+      mode: "prod"
+      version: ${{ needs.prepare.outputs.version-tag }}
+      url-prefix: "/"
+      destination-dir: "."
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
