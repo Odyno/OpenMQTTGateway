@@ -1427,6 +1427,7 @@ void setup() {
   extern void setupWiFiFromBuild();
   setupWiFiFromBuild();
 #else
+  WiFi.setHostname(gateway_name);
   WiFi.mode(WIFI_STA);
   if (loadConfigFromFlash()) { // Config present
     THEENGS_LOG_NOTICE(F("Config loaded from flash" CR));
@@ -1815,6 +1816,7 @@ void ESPRestart(byte reason) {
 
 #if defined(ESPWifiManualSetup)
 void setupWiFiFromBuild() {
+  WiFi.setHostname(gateway_name);
   WiFi.mode(WIFI_STA);
   wifiMulti.addAP(wifi_ssid, wifi_password);
   THEENGS_LOG_TRACE(F("Connecting to %s" CR), wifi_ssid);
