@@ -110,7 +110,6 @@ jobs:
           else
             BUILD_ARGS="$BUILD_ARGS --mode prod"
           fi
-
           ./scripts/ci.sh build $BUILD_ARGS
 
       - name: Upload firmware artifacts
