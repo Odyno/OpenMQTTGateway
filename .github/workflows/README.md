@@ -24,7 +24,6 @@ Parameterized building blocks called by main workflows:
 - `task-security-scan.yml` - Configurable security scanning
 
 
-
 ## Workflow Overview Table
 
 | Workflow | Trigger | Purpose | Artifacts |
